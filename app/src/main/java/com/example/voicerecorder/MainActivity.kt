@@ -8,13 +8,16 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import com.example.voicerecorder.service.RecordingService
+import com.example.voicerecorder.summary.SummaryWorker
 
 class MainActivity : AppCompatActivity() {
 
@@ -69,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
                         Toast.makeText(
                             this@MainActivity,
-                            "Recording saved to Music/App Records",
+                            "Recording saved, analyzing…",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -87,6 +90,86 @@ class MainActivity : AppCompatActivity() {
                             "Could not save recording",
                             Toast.LENGTH_LONG
                         ).show()
+                    }
+                }
+            }
+        }
+
+    /*
+     * Gemini summary status (see summary/SummaryWorker).
+     *
+     * Only touches the status text while the recorder is idle
+     * (START enabled), so it never overwrites an active recording.
+     */
+    private val summaryReceiver =
+        object : BroadcastReceiver() {
+
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
+
+                if (!btnStart.isEnabled) {
+                    return
+                }
+
+                when (intent?.action) {
+
+                    SummaryWorker.ACTION_SUMMARY_STARTED -> {
+
+                        tvStatus.text =
+                            "Analyzing recording…"
+                    }
+
+                    SummaryWorker.ACTION_SUMMARY_COMPLETE -> {
+
+                        val categories =
+                            intent.getStringArrayListExtra(
+                                SummaryWorker.EXTRA_CATEGORIES
+                            ).orEmpty()
+
+                        val notes =
+                            intent.getStringArrayListExtra(
+                                SummaryWorker.EXTRA_NOTES
+                            ).orEmpty()
+
+                        val audioDeleted =
+                            intent.getBooleanExtra(
+                                SummaryWorker.EXTRA_AUDIO_DELETED,
+                                false
+                            )
+
+                        val entries =
+                            if (notes.isEmpty()) {
+                                "Nothing worth keeping in this recording."
+                            } else {
+                                categories.zip(notes)
+                                    .joinToString("\n\n") { (category, note) ->
+                                        "$category: $note"
+                                    }
+                            }
+
+                        val count =
+                            if (notes.size == 1) "1 note"
+                            else "${notes.size} notes"
+
+                        val audio =
+                            if (audioDeleted) "Notes saved. Recording deleted."
+                            else "Recording kept."
+
+                        tvStatus.text =
+                            "Summary generated ($count)\n\n$entries\n\n$audio"
+                    }
+
+                    SummaryWorker.ACTION_SUMMARY_FAILED -> {
+
+                        val error =
+                            intent.getStringExtra(
+                                SummaryWorker.EXTRA_ERROR
+                            ).orEmpty()
+
+                        tvStatus.text =
+                            "Summary failed\n\n$error"
                     }
                 }
             }
@@ -111,6 +194,10 @@ class MainActivity : AppCompatActivity() {
             findViewById(R.id.tvStatus)
 
         registerRecordingReceiver()
+
+        registerSummaryReceiver()
+
+        makeStatusScrollable()
 
         btnStart.setOnClickListener {
 
@@ -164,6 +251,63 @@ class MainActivity : AppCompatActivity() {
                 recordingReceiver,
                 filter
             )
+        }
+    }
+
+    private fun registerSummaryReceiver() {
+
+        val filter =
+            IntentFilter().apply {
+
+                addAction(
+                    SummaryWorker.ACTION_SUMMARY_STARTED
+                )
+
+                addAction(
+                    SummaryWorker.ACTION_SUMMARY_COMPLETE
+                )
+
+                addAction(
+                    SummaryWorker.ACTION_SUMMARY_FAILED
+                )
+            }
+
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+
+            registerReceiver(
+                summaryReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+        } else {
+
+            @Suppress("DEPRECATION")
+            registerReceiver(
+                summaryReceiver,
+                filter
+            )
+        }
+    }
+
+    /*
+     * One recording can produce many summary entries.
+     * Cap the status height and let it scroll, so START/STOP
+     * always stay on screen.
+     */
+    private fun makeStatusScrollable() {
+
+        tvStatus.maxLines = 12
+
+        tvStatus.movementMethod =
+            ScrollingMovementMethod()
+
+        // Every new status starts at the top.
+        tvStatus.doAfterTextChanged {
+            tvStatus.scrollTo(0, 0)
         }
     }
 
@@ -237,6 +381,14 @@ class MainActivity : AppCompatActivity() {
         try {
             unregisterReceiver(
                 recordingReceiver
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        try {
+            unregisterReceiver(
+                summaryReceiver
             )
         } catch (e: Exception) {
             e.printStackTrace()

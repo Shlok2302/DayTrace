@@ -1,0 +1,689 @@
+package com.example.voicerecorder.summary
+
+import android.content.Context
+import android.net.Uri
+import android.util.Base64
+import android.util.Base64OutputStream
+import com.example.voicerecorder.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.FileNotFoundException
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * Sends a saved recording to the Gemini API and returns its transcript
+ * plus the short notes worth keeping, each with exactly one category
+ * (see [GeminiSummarizer.CATEGORIES]).
+ *
+ * Small recordings are sent inline in a single request. Larger ones are
+ * uploaded through the Gemini Files API first (inline requests are capped
+ * at 20 MB), and that uploaded copy is deleted afterwards.
+ *
+ * The local MP3 is only read here. Deleting it after a successful result
+ * is SummaryWorker's job.
+ */
+class GeminiSummarizer(
+    private val context: Context
+) {
+
+    class GeminiException(
+        message: String,
+        val failure: FailureReason,
+        val retryable: Boolean = false
+    ) : Exception(message)
+
+    suspend fun summarize(
+        audioUri: Uri
+    ): RecordingNotes = withContext(Dispatchers.IO) {
+
+        if (BuildConfig.GEMINI_API_KEY.isBlank()) {
+            throw GeminiException(
+                "Gemini API key is missing. Add GEMINI_API_KEY to local.properties.",
+                FailureReason.GEMINI_ERROR
+            )
+        }
+
+        val size =
+            audioSize(audioUri)
+
+        val response =
+            if (size <= INLINE_LIMIT_BYTES) {
+                generateInline(audioUri)
+            } else {
+                generateFromUpload(audioUri, size)
+            }
+
+        parseNotes(response)
+    }
+
+    private fun audioSize(
+        audioUri: Uri
+    ): Long {
+
+        val size =
+            try {
+                context.contentResolver
+                    .openFileDescriptor(audioUri, "r")
+                    ?.use { it.statSize }
+                    ?: -1L
+            } catch (e: FileNotFoundException) {
+                -1L
+            }
+
+        if (size <= 0) {
+            throw GeminiException(
+                "Recording not found or empty",
+                FailureReason.RECORDING_NOT_FOUND
+            )
+        }
+
+        return size
+    }
+
+    private fun openAudio(
+        audioUri: Uri
+    ): InputStream =
+        context.contentResolver.openInputStream(audioUri)
+            ?: throw GeminiException(
+                "Could not open recording",
+                FailureReason.RECORDING_NOT_FOUND
+            )
+
+    /**
+     * One request with the audio embedded as base64.
+     *
+     * The base64 is streamed into the request body, so the recording
+     * never has to sit in memory as one large string.
+     */
+    private fun generateInline(
+        audioUri: Uri
+    ): JSONObject {
+
+        val audioPart =
+            JSONObject().put(
+                "inline_data",
+                JSONObject()
+                    .put("mime_type", MIME_TYPE)
+                    .put("data", AUDIO_PLACEHOLDER)
+            )
+
+        val (head, tail) =
+            requestBody(audioPart)
+                .toString()
+                .split(AUDIO_PLACEHOLDER)
+
+        return json(GENERATE_URL, "POST") {
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setChunkedStreamingMode(0)
+
+            outputStream.buffered().use { out ->
+                out.write(head.toByteArray())
+
+                Base64OutputStream(out, Base64.NO_WRAP or Base64.NO_CLOSE).use { base64 ->
+                    openAudio(audioUri).use { it.copyTo(base64) }
+                }
+
+                out.write(tail.toByteArray())
+            }
+        }
+    }
+
+    /**
+     * Upload through the Files API, then reference the file in the request.
+     */
+    private suspend fun generateFromUpload(
+        audioUri: Uri,
+        size: Long
+    ): JSONObject {
+
+        val file =
+            uploadAudio(audioUri, size)
+
+        val fileName =
+            file.getString("name")
+
+        try {
+            if (file.optString("state") != "ACTIVE") {
+                waitUntilActive(fileName)
+            }
+
+            val audioPart =
+                JSONObject().put(
+                    "file_data",
+                    JSONObject()
+                        .put("mime_type", MIME_TYPE)
+                        .put("file_uri", file.getString("uri"))
+                )
+
+            val body =
+                requestBody(audioPart).toString()
+
+            return json(GENERATE_URL, "POST") {
+                writeJson(body)
+            }
+
+        } finally {
+            // Best effort — Gemini also expires uploaded files after 48 hours.
+            runCatching {
+                call("$BASE_URL/v1beta/$fileName", "DELETE") {}
+            }
+        }
+    }
+
+    private fun uploadAudio(
+        audioUri: Uri,
+        size: Long
+    ): JSONObject {
+
+        val uploadUrl =
+            call(
+                "$BASE_URL/upload/v1beta/files",
+                "POST",
+                send = {
+                    setRequestProperty("X-Goog-Upload-Protocol", "resumable")
+                    setRequestProperty("X-Goog-Upload-Command", "start")
+                    setRequestProperty("X-Goog-Upload-Header-Content-Length", size.toString())
+                    setRequestProperty("X-Goog-Upload-Header-Content-Type", MIME_TYPE)
+
+                    writeJson(
+                        JSONObject()
+                            .put("file", JSONObject().put("display_name", "recording"))
+                            .toString()
+                    )
+                }
+            ) {
+                getHeaderField("x-goog-upload-url")
+                    ?: throw GeminiException(
+                        "Gemini did not return an upload URL",
+                        FailureReason.GEMINI_ERROR,
+                        retryable = true
+                    )
+            }
+
+        return json(uploadUrl, "POST") {
+            doOutput = true
+            setFixedLengthStreamingMode(size)
+            setRequestProperty("X-Goog-Upload-Offset", "0")
+            setRequestProperty("X-Goog-Upload-Command", "upload, finalize")
+
+            outputStream.use { out ->
+                openAudio(audioUri).use { it.copyTo(out) }
+            }
+        }.getJSONObject("file")
+    }
+
+    private suspend fun waitUntilActive(
+        fileName: String
+    ) {
+
+        repeat(MAX_STATE_CHECKS) {
+
+            when (json("$BASE_URL/v1beta/$fileName", "GET").optString("state")) {
+
+                "ACTIVE" -> return
+
+                "FAILED" -> throw GeminiException(
+                    "Gemini could not process the recording",
+                    FailureReason.GEMINI_ERROR
+                )
+
+                else -> delay(STATE_CHECK_INTERVAL_MS)
+            }
+        }
+
+        throw GeminiException(
+            "Gemini took too long to process the recording",
+            FailureReason.GEMINI_ERROR,
+            retryable = true
+        )
+    }
+
+    private fun requestBody(
+        audioPart: JSONObject
+    ): JSONObject {
+
+        // Audio first, then the instructions (Google's recommended order).
+        val parts =
+            JSONArray()
+                .put(audioPart)
+                .put(JSONObject().put("text", PROMPT))
+
+        return JSONObject()
+            .put(
+                "contents",
+                JSONArray().put(JSONObject().put("parts", parts))
+            )
+            .put(
+                "generationConfig",
+                JSONObject()
+                    .put("responseMimeType", "application/json")
+                    .put("responseSchema", JSONObject(RESPONSE_SCHEMA))
+                    // The model's maximum, so a long recording's transcript
+                    // and notes are never cut off.
+                    .put("maxOutputTokens", MAX_OUTPUT_TOKENS)
+            )
+    }
+
+    private fun parseNotes(
+        response: JSONObject
+    ): RecordingNotes {
+
+        val candidate =
+            response.optJSONArray("candidates")?.optJSONObject(0)
+                ?: throw GeminiException(
+                    "Gemini returned no result " +
+                            response.optJSONObject("promptFeedback")?.optString("blockReason").orEmpty(),
+                    FailureReason.PROCESSING_FAILED
+                )
+
+        // A cut-off answer would silently lose notes or transcript.
+        if (candidate.optString("finishReason") == "MAX_TOKENS") {
+            throw GeminiException(
+                "Gemini's answer was cut off (recording too long)",
+                FailureReason.PROCESSING_FAILED
+            )
+        }
+
+        val parts =
+            candidate.optJSONObject("content")?.optJSONArray("parts")
+                ?: JSONArray()
+
+        val text =
+            (0 until parts.length())
+                .map { parts.getJSONObject(it) }
+                .filterNot { it.optBoolean("thought") }
+                .joinToString("") { it.optString("text") }
+
+        if (text.isBlank()) {
+            throw GeminiException(
+                "Gemini returned an empty result (${candidate.optString("finishReason")})",
+                FailureReason.PROCESSING_FAILED
+            )
+        }
+
+        val result =
+            try {
+                JSONObject(text)
+            } catch (e: JSONException) {
+                throw GeminiException(
+                    "Gemini returned an unexpected response",
+                    FailureReason.PROCESSING_FAILED
+                )
+            }
+
+        /*
+         * No speech or no usable transcript means transcription did NOT
+         * succeed. Failing here keeps the audio (the worker only deletes
+         * it after a successful result).
+         *
+         * "No speech detected" is a failure (audio kept). "Nothing worth
+         * keeping" is a success with an empty notes list (see
+         * RecordingNotes.outcome).
+         */
+        if (!result.optBoolean("speech_detected")) {
+            throw GeminiException(NO_SPEECH, FailureReason.NO_SPEECH)
+        }
+
+        val transcript =
+            result.optString("transcript").trim()
+
+        if (transcript.isEmpty()) {
+            throw GeminiException(
+                "Transcription failed: Gemini returned no text",
+                FailureReason.TRANSCRIPTION_FAILED
+            )
+        }
+
+        val notes =
+            result.optJSONArray("notes")
+                ?: throw GeminiException(
+                    "Gemini returned an unexpected response",
+                    FailureReason.PROCESSING_FAILED
+                )
+
+        // One invalid note fails the whole recording, so nothing half-valid gets through.
+        // An empty list is valid: the recording had nothing worth keeping.
+        return RecordingNotes(
+            transcript = transcript,
+            notes = (0 until notes.length()).map { index ->
+
+                val item =
+                    notes.optJSONObject(index)
+                        ?: throw GeminiException(
+                            "Gemini returned an unexpected response",
+                            FailureReason.PROCESSING_FAILED
+                        )
+
+                val noteText =
+                    item.optString("note").trim()
+
+                val category =
+                    item.optString("category").trim()
+
+                if (noteText.isEmpty()) {
+                    throw GeminiException(
+                        "Gemini returned an empty note",
+                        FailureReason.PROCESSING_FAILED
+                    )
+                }
+
+                if (category !in CATEGORIES) {
+                    throw GeminiException(
+                        "Gemini returned an invalid category: \"$category\"",
+                        FailureReason.PROCESSING_FAILED
+                    )
+                }
+
+                Note(category, noteText)
+            }
+        )
+    }
+
+    private fun json(
+        url: String,
+        method: String,
+        send: HttpURLConnection.() -> Unit = {}
+    ): JSONObject =
+        call(url, method, send) {
+            inputStream.bufferedReader().use { JSONObject(it.readText()) }
+        }
+
+    private fun <T> call(
+        url: String,
+        method: String,
+        send: HttpURLConnection.() -> Unit = {},
+        read: HttpURLConnection.() -> T
+    ): T {
+
+        val connection =
+            (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = method
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+                setRequestProperty("x-goog-api-key", BuildConfig.GEMINI_API_KEY)
+            }
+
+        try {
+            connection.send()
+
+            val code =
+                connection.responseCode
+
+            if (code !in 200..299) {
+                throw httpError(code, connection.errorStream)
+            }
+
+            return connection.read()
+
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun HttpURLConnection.writeJson(
+        body: String
+    ) {
+        doOutput = true
+        setRequestProperty("Content-Type", "application/json")
+        outputStream.use { it.write(body.toByteArray()) }
+    }
+
+    private fun httpError(
+        code: Int,
+        errorStream: InputStream?
+    ): GeminiException {
+
+        val body =
+            errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+
+        val message =
+            runCatching {
+                JSONObject(body).getJSONObject("error").getString("message")
+            }.getOrNull()
+
+        return GeminiException(
+            "Gemini error $code: ${message ?: "no details"}",
+            FailureReason.GEMINI_ERROR,
+            // Rate limits and server overload ("high demand") are temporary.
+            retryable = code == 408 || code == 429 || code >= 500
+        )
+    }
+
+    companion object {
+
+        /*
+         * Chosen after testing several models on speech and on silence:
+         * accurate, ~2-3 s for a short note, and it reliably reports
+         * silence instead of inventing a summary (the bigger flash
+         * models hallucinated content for silent audio).
+         */
+        private const val MODEL =
+            "gemini-3.5-flash-lite"
+
+        private const val BASE_URL =
+            "https://generativelanguage.googleapis.com"
+
+        private const val GENERATE_URL =
+            "$BASE_URL/v1beta/models/$MODEL:generateContent"
+
+        private const val MIME_TYPE =
+            "audio/mp3"
+
+        /*
+         * Inline requests are capped at 20 MB and base64 adds ~33%.
+         * 10 MB is roughly 10 minutes of the recorder's 128 kbps MP3.
+         */
+        private const val INLINE_LIMIT_BYTES =
+            10L * 1024 * 1024
+
+        private const val AUDIO_PLACEHOLDER =
+            "__AUDIO_BASE64__"
+
+        private const val CONNECT_TIMEOUT_MS =
+            30_000
+
+        private const val READ_TIMEOUT_MS =
+            180_000
+
+        private const val MAX_STATE_CHECKS =
+            60
+
+        private const val STATE_CHECK_INTERVAL_MS =
+            2_000L
+
+        const val NO_SPEECH =
+            "No speech detected."
+
+        private const val MAX_OUTPUT_TOKENS =
+            65_536
+
+        /*
+         * Every note gets exactly one of these.
+         * The same list is sent to Gemini as the allowed values.
+         */
+        val CATEGORIES =
+            listOf(
+                "Remember",
+                "Thoughts",
+                "Random Gossip"
+            )
+
+        /*
+         * Terms that speech recognition often mishears in student/developer
+         * recordings (e.g. "DBMS" heard as "TBS 7"). Gemini is told to use
+         * these spellings when the audio and the context fit. Extend freely.
+         */
+        private val KNOWN_TERMS =
+            listOf(
+                "DBMS", "SQL", "MySQL", "DSA", "OOP", "OS", "CN", "COA", "TOC", "AI", "ML",
+                "Android", "Android Studio", "Kotlin", "Java", "Python", "C++", "JavaScript",
+                "React", "Flutter", "Firebase", "Gemini", "Gemini API", "API", "API key", "APK",
+                "Git", "GitHub", "Figma", "UI", "UX", "JSON", "Wi-Fi", "LeetCode", "DayTrace",
+                "hackathon", "viva", "lab", "semester", "internals", "assignment", "faculty",
+                "HOD", "placement", "internship"
+            )
+
+        private val PROMPT =
+            """
+            You turn a personal voice recording into short notes. Your job is NOT to summarize the whole recording. Understand it, find every meaningful piece of information, separate independent tasks and ideas, drop unnecessary conversation, and write short notes that keep the full meaning.
+
+            STEP 0 - TRANSCRIBE
+            Write the complete, faithful transcript of the speech into "transcript", in the language it was spoken. The app deletes the audio once your transcript and notes are saved, so the transcript must not leave anything out.
+            If there is no understandable speech (silence, noise, music only), set speech_detected to false, leave transcript empty and return no notes. Never invent speech.
+            The speaker is usually a student or developer. These terms come up often and are easily misheard: ${KNOWN_TERMS.joinToString(", ")}. When a word sounds like one of these terms and the context fits, write the correct term in both the transcript and the notes. For example "TBS 7 assignment" or "DBMF assignment" becomes "DBMS assignment", "the Jimmy API" becomes "the Gemini API", "git hub" becomes "GitHub". Do not change words that already make sense in context.
+
+            STEP 1 - UNDERSTAND
+            Understand the whole recording and its context. It may mix several tasks, ideas, reminders, facts, personal thoughts, stories, jokes, opinions, small talk and unrelated conversation. One sentence is not one note.
+
+            STEP 2 - EXTRACT MEANINGFUL POINTS (write them into "points")
+            Find every separate piece of information worth keeping.
+            Split pieces that are independent tasks, reminders, ideas or facts. "We need to finish the Android project before Friday and I still haven't completed the Gemini integration." gives two points: "Finish the Android project before Friday." and "Complete the Gemini integration."
+            Do not split just because a sentence contains "and". "Finish the Android project and test it before Friday." stays one task, because both actions serve the same goal. Actions for the same goal, such as preparing the same event or finishing the same piece of work, stay one note. Split only clearly separate goals.
+            When you do split, repeat the details the parts share (deadline, event, person) in each note, so nothing is lost.
+
+            STEP 3 - WHAT TO KEEP AND WHAT TO DROP
+            Keep every:
+            - task, reminder, deadline, appointment or meeting, and anything to send, pay, buy, finish, attend or follow up on
+            - idea, suggestion, proposal, feature idea or plan, even when nothing is decided yet ("maybe we could...", "we'll decide later")
+            - useful observation, decision, opinion or fact
+            - piece of news about people that is worth knowing later (someone got an internship, failed a test, is moving)
+            Drop: greetings and goodbyes, acknowledgements ("yeah", "okay", "exactly"), filler and repetition, jokes, laughter and reactions ("it was hilarious", "that was so funny"), passing remarks with no lasting information ("the bus was crazy today", "the samosa was terrible"), and talk about the conversation itself ("what were we talking about?", "that's all for now").
+            When unsure whether an idea, observation or plan is useful, KEEP it. When unsure whether small talk is useful, drop it.
+
+            STEP 4 - REWRITE: SHORTEN THE WORDING, NEVER THE MEANING
+            Write each point as one short, clear sentence in simple everyday language.
+            Keep every detail that gives the point its meaning: dates, days, times, deadlines, people, places, project, course or subject names, and the purpose or reason when it explains why something matters or what it is for.
+            Remove only conversational wording: "I think", "I feel", "we should probably", "I was saying", "you know", "actually", "kind of", "basically", "maybe", "I still haven't", "we really need to", "remind me to", "don't forget".
+            - "I have a presentation on Monday, so I should prepare the slides this weekend." becomes "Prepare the slides this weekend for Monday's presentation." Never just "Prepare the slides this weekend."
+            - "We really need to finish the Android project before Friday because the faculty is going to check the demo." becomes "Finish the Android project before Friday for the faculty demo."
+            - "I still haven't completed the Gemini integration." becomes "Complete the Gemini integration."
+            - "I need to finish the project tomorrow and also send the APK to Shlok tonight." becomes "Finish the project tomorrow." and "Send the APK to Shlok tonight."
+            - "Call the plumber before Friday, because the landlord is visiting on Saturday." becomes "Call the plumber before Friday; the landlord visits on Saturday."
+            Add nothing that was not said. Never refer to "the speaker", "the user" or "the recording".
+
+            STEP 5 - CATEGORIZE (exactly one category per note)
+            Decide in this order, and give the same kind of note the same category every time:
+            1. Remember: something to DO or to REMEMBER. A task, reminder, deadline, appointment or meeting, an instruction to follow, or a fact to keep (a date, a number, where something is). This includes work that has been decided or committed to ("finish the database connection tonight", "push the code before midnight"). Words like "need to", "have to", "must", "don't forget", "remind me" point to Remember.
+            2. Thoughts: an idea, suggestion, proposal, possible feature, plan that is not yet decided, observation, opinion or concept ("we could add dark mode", "maybe let users edit their profile picture", "the library Wi-Fi is faster than the hostel's"). Words like "maybe", "we could", "I was thinking", "we should consider", "we'll decide later" point to Thoughts.
+            3. Random Gossip: casual information about people or events that is worth keeping but is neither a task nor an idea ("Aman got an internship at Zomato starting in January").
+            Small talk that is not worth keeping gets no note at all.
+
+            STEP 6 - NO DUPLICATES
+            Never create two notes with the same information; merge them when they are truly the same item. Keep independent actions as separate notes.
+
+            STEP 7 - CHECK
+            Before answering, compare every note with the transcript. Each note must still contain every date, day, time, deadline, person, place, project name and purpose that belongs to it. If one deadline or date covers several notes, each of those notes must include it ("book the hall and send the invites by Thursday" gives "Book the hall by Thursday." and "Send the invites by Thursday."). Add anything missing.
+
+            STEP 8 - OUTPUT
+            Return every note worth keeping, in the order it was said. If there is speech but nothing worth keeping, return no notes (the transcript is still saved). Do not explain your reasoning, do not describe the process, and do not summarize the recording as one paragraph.
+            """.trimIndent()
+
+        /*
+         * "transcript" is the proof that transcription succeeded; the app
+         * saves it before deleting the audio.
+         *
+         * "points" is Gemini's internal extraction step (find each piece of
+         * information before rewriting it). It makes splitting more
+         * consistent; the app does not use it.
+         *
+         * "enum" restricts Gemini's answer to exactly the allowed categories.
+         */
+        private val RESPONSE_SCHEMA =
+            """
+            {
+              "type": "OBJECT",
+              "properties": {
+                "speech_detected": { "type": "BOOLEAN" },
+                "transcript": { "type": "STRING" },
+                "points": {
+                  "type": "ARRAY",
+                  "items": { "type": "STRING" }
+                },
+                "notes": {
+                  "type": "ARRAY",
+                  "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                      "note": { "type": "STRING" },
+                      "category": { "type": "STRING", "enum": ${JSONArray(CATEGORIES)} }
+                    },
+                    "required": ["note", "category"],
+                    "propertyOrdering": ["note", "category"]
+                  }
+                }
+              },
+              "required": ["speech_detected", "transcript", "points", "notes"],
+              "propertyOrdering": ["speech_detected", "transcript", "points", "notes"]
+            }
+            """
+    }
+}
+
+/**
+ * Why processing a recording failed. In every case the audio is kept.
+ */
+enum class FailureReason {
+
+    /** Gemini heard no understandable speech (silence, noise, music). */
+    NO_SPEECH,
+
+    /** Speech was detected but no usable transcript came back. */
+    TRANSCRIPTION_FAILED,
+
+    /** Transcript came back, but the notes were malformed or invalid. */
+    PROCESSING_FAILED,
+
+    /** The MP3 is missing or empty. */
+    RECORDING_NOT_FOUND,
+
+    /** Gemini API error (bad key, quota, server error after retries). */
+    GEMINI_ERROR,
+
+    /** Gemini could not be reached. */
+    NETWORK,
+
+    /** Transcript + notes could not be saved on the device. */
+    STORAGE
+}
+
+/**
+ * A successfully processed recording: the full transcript plus the notes
+ * worth keeping (may be empty when nothing in it was worth a note).
+ */
+data class RecordingNotes(
+    val transcript: String,
+    val notes: List<Note>
+) {
+
+    /**
+     * "Nothing worth keeping" is a success: the transcript exists, there
+     * were just no notes in it. Not to be confused with "No speech
+     * detected", which is a failure (FailureReason.NO_SPEECH).
+     */
+    val outcome: String
+        get() = if (notes.isEmpty()) OUTCOME_NOTHING_WORTH_KEEPING else OUTCOME_NOTES
+
+    companion object {
+
+        const val OUTCOME_NOTES =
+            "NOTES"
+
+        const val OUTCOME_NOTHING_WORTH_KEEPING =
+            "NOTHING_WORTH_KEEPING"
+    }
+}
+
+/**
+ * One short note from a recording.
+ */
+data class Note(
+    val category: String,
+    val text: String
+)

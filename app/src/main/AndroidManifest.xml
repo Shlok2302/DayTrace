@@ -7,7 +7,11 @@
     <!-- Foreground service permission -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
+    <!-- Internet permission (Gemini summary) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".DayTraceApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Voice Recorder"
@@ -32,6 +36,17 @@
             android:exported="false"
             android:stopWithTask="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Starts the Gemini summary after RecordingService saves an MP3 -->
+        <receiver
+            android:name=".summary.RecordingCompleteReceiver"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="com.example.voicerecorder.RECORDING_COMPLETE" />
+            </intent-filter>
+
+        </receiver>
 
     </application>
 

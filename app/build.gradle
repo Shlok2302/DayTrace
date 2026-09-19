@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Secrets such as the Gemini API key live in local.properties (gitignored),
+// never in source code.
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
 android {
     namespace 'com.example.voicerecorder'
     compileSdk 33
@@ -15,6 +23,12 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties.getProperty('GEMINI_API_KEY', '')}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
@@ -44,6 +58,9 @@ dependencies {
 
     implementation 'dev.ffmpegkit-maintained:ffmpeg-kit-full:7.1.6'
     implementation 'com.arthenica:smart-exception-java:0.2.1'
+
+    // Background job for the Gemini summary (2.8.x supports compileSdk 33)
+    implementation 'androidx.work:work-runtime-ktx:2.8.1'
 
     testImplementation 'junit:junit:4.13.2'
 
