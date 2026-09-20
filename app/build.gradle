@@ -13,7 +13,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace 'com.example.voicerecorder'
-    compileSdk 33
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.voicerecorder"
@@ -56,7 +56,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-    implementation 'dev.ffmpegkit-maintained:ffmpeg-kit-full:7.1.6'
+    // 8.1.8 ships 16 KB page aligned native libraries (7.1.6 did not)
+    implementation 'dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.8'
     implementation 'com.arthenica:smart-exception-java:0.2.1'
 
     // Background job for the Gemini summary (2.8.x supports compileSdk 33)

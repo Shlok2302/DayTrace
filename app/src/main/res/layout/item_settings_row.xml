@@ -40,7 +40,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/Text.BodyStrong"
-            android:textSize="16sp" />
+            android:textSize="15sp" />
 
         <TextView
             android:id="@+id/tvSubtitle"
@@ -57,8 +57,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
+        android:maxWidth="110dp"
+        android:maxLines="1"
+        android:ellipsize="end"
         style="@style/Text.Label"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:visibility="gone" />
 
     <ImageView

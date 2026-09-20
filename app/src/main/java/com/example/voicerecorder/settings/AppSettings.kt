@@ -79,9 +79,9 @@ class AppSettings(
         /** Model id to the name shown on screen. */
         val MODELS =
             linkedMapOf(
-                GeminiSummarizer.DEFAULT_MODEL to "Gemini 3.5 Flash Lite",
-                "gemini-3.5-flash" to "Gemini 3.5 Flash",
-                "gemini-flash-latest" to "Gemini Flash (latest)"
+                GeminiSummarizer.DEFAULT_MODEL to "3.5 Flash Lite",
+                "gemini-3.5-flash" to "3.5 Flash",
+                "gemini-flash-latest" to "Flash latest"
             )
     }
 }
