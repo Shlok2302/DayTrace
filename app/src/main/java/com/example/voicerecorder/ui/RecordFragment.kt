@@ -123,9 +123,6 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         view.findViewById<View>(R.id.btnStart).setOnClickListener { onStartClicked() }
         view.findViewById<View>(R.id.btnStop).setOnClickListener { stopRecording() }
-        view.findViewById<View>(R.id.btnSettings).setOnClickListener {
-            (activity as? MainActivity)?.openSettings()
-        }
 
         btnDone.setOnClickListener {
             if (State.stage == Stage.FAILED) {
