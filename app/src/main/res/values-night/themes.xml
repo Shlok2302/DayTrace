@@ -1,10 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        DayTrace is a light, warm design. Keeping the same palette at night
-        avoids an unreviewed dark variant.
+        Same theme as by day, on the dark Material parent so that dialogs
+        and menus come out dark too. The colours themselves come from
+        values-night/colors.xml.
     -->
-    <style name="Theme.VoiceRecorder" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Theme.VoiceRecorder" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/forest</item>
         <item name="colorPrimaryVariant">@color/forest_dark</item>
         <item name="colorOnPrimary">@color/on_forest</item>
@@ -13,12 +14,13 @@
         <item name="colorOnSecondary">@color/on_forest</item>
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:navigationBarColor">@color/surface</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
     </style>
 
 </resources>

@@ -51,7 +51,7 @@ class SettingsFragment : SettingsPageFragment() {
                 icon = R.drawable.ic_palette,
                 title = getString(R.string.settings_appearance),
                 subtitle = getString(R.string.settings_appearance_subtitle),
-                onClick = { showNotAvailable(R.string.settings_appearance) }
+                onClick = { open(AppearanceSettingsFragment()) }
             ),
 
             SettingsRow.Open(

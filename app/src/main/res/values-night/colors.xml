@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        The dark palette, taken from the DayTrace dark reference screens.
+        Every name here also exists in values/colors.xml, so the screens
+        themselves are unchanged: only the colours swap.
+    -->
+
+    <!-- Surfaces -->
+    <color name="background">#101314</color>
+    <color name="surface">#181C1D</color>
+    <color name="surface_sunken">#262B2D</color>
+    <color name="stroke">#23282A</color>
+    <color name="divider">#1F2425</color>
+
+    <!-- Brand: at night the green is the light one, so text on it is dark -->
+    <color name="forest">#82D094</color>
+    <color name="forest_dark">#6FC184</color>
+    <color name="forest_soft">#1F3129</color>
+    <color name="on_forest">#08160E</color>
+
+    <!-- Text -->
+    <color name="text_primary">#ECEFEE</color>
+    <color name="text_secondary">#979C9C</color>
+    <color name="text_tertiary">#6F7474</color>
+
+    <!-- Recording -->
+    <color name="record_red">#F0716C</color>
+    <color name="record_red_soft">#2E2021</color>
+
+    <!-- Categories -->
+    <color name="thoughts">#EE8A8E</color>
+    <color name="thoughts_soft">#332628</color>
+    <color name="thoughts_tint">#261E1F</color>
+
+    <color name="idea">#FBBE45</color>
+    <color name="idea_soft">#37301F</color>
+    <color name="idea_tint">#26221B</color>
+
+    <color name="remember">#62B077</color>
+    <color name="remember_soft">#26392E</color>
+    <color name="remember_tint">#1C2A23</color>
+
+    <color name="gossip">#63A0E3</color>
+    <color name="gossip_soft">#243B52</color>
+    <color name="gossip_tint">#1C262E</color>
+
+    <!-- Pieces that used to be hardcoded inside drawables -->
+    <color name="record_red_stroke">#40F0716C</color>
+    <color name="switch_off">#3A4042</color>
+    <color name="step_pending">#D6DBD8</color>
+
+</resources>

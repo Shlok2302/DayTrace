@@ -1,6 +1,7 @@
 package com.example.voicerecorder.settings
 
 import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import com.example.voicerecorder.summary.GeminiSummarizer
 
 /**
@@ -51,6 +52,11 @@ class AppSettings(
         get() = prefs.getInt(KEY_MINIMUM_SECONDS, 3)
         set(value) = prefs.edit().putInt(KEY_MINIMUM_SECONDS, value).apply()
 
+    /** Light, dark, or whatever the phone is set to. */
+    var theme: AppTheme
+        get() = AppTheme.of(prefs.getString(KEY_THEME, null))
+        set(value) = prefs.edit().putString(KEY_THEME, value.name).apply()
+
     /** Extra names and words Gemini should spell correctly. */
     var knownTerms: List<String>
         get() = prefs.getString(KEY_TERMS, null)
@@ -72,6 +78,7 @@ class AppSettings(
         private const val KEY_RETRY = "retry_failed"
         private const val KEY_MINIMUM_SECONDS = "minimum_seconds"
         private const val KEY_TERMS = "known_terms"
+        private const val KEY_THEME = "theme"
 
         val MINIMUM_SECONDS_CHOICES =
             listOf(0, 3, 5, 10)
@@ -83,6 +90,28 @@ class AppSettings(
                 "gemini-3.5-flash" to "3.5 Flash",
                 "gemini-flash-latest" to "Flash latest"
             )
+    }
+}
+
+/**
+ * Which colours the app uses. SYSTEM is the default, so a fresh install
+ * follows the phone's own light/dark setting.
+ */
+enum class AppTheme(
+    val label: String,
+    val mode: Int
+) {
+
+    SYSTEM("System", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM),
+    LIGHT("Light", AppCompatDelegate.MODE_NIGHT_NO),
+    DARK("Dark", AppCompatDelegate.MODE_NIGHT_YES);
+
+    companion object {
+
+        fun of(
+            name: String?
+        ): AppTheme =
+            values().firstOrNull { it.name == name } ?: SYSTEM
     }
 }
 
