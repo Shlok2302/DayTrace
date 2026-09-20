@@ -7,7 +7,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.DrawableRes
-import com.google.android.material.materialswitch.MaterialSwitch
+
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import com.example.voicerecorder.R
@@ -125,7 +125,7 @@ abstract class SettingsPageFragment : Fragment(R.layout.fragment_settings) {
             view.findViewById<ImageView>(R.id.imgChevron)
 
         val toggle =
-            view.findViewById<MaterialSwitch>(R.id.toggle)
+            view.findViewById<ToggleView>(R.id.toggle)
 
         when (row) {
 
@@ -152,9 +152,9 @@ abstract class SettingsPageFragment : Fragment(R.layout.fragment_settings) {
                 chevron.isVisible = false
 
                 toggle.isVisible = true
-                toggle.setOnCheckedChangeListener(null)
-                toggle.isChecked = row.checked
-                toggle.setOnCheckedChangeListener { _, checked -> row.onChange(checked) }
+                toggle.onCheckedChange = null
+                toggle.setChecked(row.checked, animate = false)
+                toggle.onCheckedChange = { checked -> row.onChange(checked) }
 
                 view.setOnClickListener { toggle.toggle() }
             }

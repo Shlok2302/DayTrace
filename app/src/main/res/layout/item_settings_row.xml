@@ -70,15 +70,11 @@
         android:contentDescription="@null"
         app:tint="@color/text_tertiary" />
 
-    <com.google.android.material.materialswitch.MaterialSwitch
+    <com.example.voicerecorder.ui.ToggleView
         android:id="@+id/toggle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
-        app:trackTint="@color/switch_track"
-        app:thumbTint="@color/switch_thumb"
-        app:trackDecorationTint="@android:color/transparent"
-        app:thumbIcon="@null"
         android:visibility="gone" />
 
 </LinearLayout>
