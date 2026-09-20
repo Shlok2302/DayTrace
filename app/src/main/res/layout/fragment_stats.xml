@@ -32,15 +32,6 @@
             style="@style/Text.SectionTitle"
             android:textSize="19sp" />
 
-        <ImageButton
-            android:id="@+id/btnSettings"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_settings"
-            android:scaleType="centerInside"
-            android:contentDescription="@string/settings_title" />
-
     </LinearLayout>
 
     <ScrollView
@@ -73,12 +64,15 @@
                 android:text="@string/stats_subtitle"
                 style="@style/Text.Body" />
 
+            <!-- Segmented control: one container, three equal segments -->
             <LinearLayout
                 android:id="@+id/segments"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:orientation="horizontal" />
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_segments"
+                android:padding="4dp" />
 
             <!-- Category tiles, two per row -->
             <LinearLayout

@@ -55,10 +55,6 @@ class StatsFragment : Fragment(R.layout.fragment_stats) {
         tiles += view.findViewById<FrameLayout>(R.id.tile2)
         tiles += view.findViewById<FrameLayout>(R.id.tile3)
 
-        view.findViewById<View>(R.id.btnSettings).setOnClickListener {
-            (activity as? MainActivity)?.openSettings()
-        }
-
         buildSegments()
         buildTiles()
     }
@@ -104,15 +100,10 @@ class StatsFragment : Fragment(R.layout.fragment_stats) {
                 render()
             }
 
+            // Equal widths, so the three segments fill the container evenly.
             segments.addView(
                 segment,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    marginStart = (resources.displayMetrics.density * 3).toInt()
-                    marginEnd = (resources.displayMetrics.density * 3).toInt()
-                }
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             )
         }
     }
@@ -190,16 +181,21 @@ class StatsFragment : Fragment(R.layout.fragment_stats) {
             val selected =
                 index == range.ordinal
 
-            segment.setBackgroundResource(
-                if (selected) R.drawable.bg_chip_selected else R.drawable.bg_chip
-            )
+            if (selected) {
+                segment.setBackgroundResource(R.drawable.bg_segment_selected)
+            } else {
+                segment.background = null
+            }
 
             segment.setTextColor(
                 ContextCompat.getColor(
                     requireContext(),
-                    if (selected) R.color.on_forest else R.color.text_primary
+                    if (selected) R.color.on_forest else R.color.text_secondary
                 )
             )
+
+            segment.typeface =
+                if (selected) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
         }
     }
 
