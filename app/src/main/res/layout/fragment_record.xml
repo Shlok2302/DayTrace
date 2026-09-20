@@ -191,12 +191,12 @@
                     android:layout_gravity="center"
                     android:src="@drawable/ic_mic_filled"
                     android:contentDescription="@null"
-                    app:tint="@color/record_red"
-/>
+                    app:tint="@color/record_red" />
 
             </FrameLayout>
 
             <LinearLayout
+                android:id="@+id/timerRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"

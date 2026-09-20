@@ -17,6 +17,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.voicerecorder.R
 import com.example.voicerecorder.encoder.Mp3Converter
+import com.example.voicerecorder.settings.AppSettings
 import java.io.File
 
 class RecordingService : Service() {
@@ -179,12 +180,19 @@ class RecordingService : Service() {
                     MediaRecorder.AudioEncoder.AAC
                 )
 
+                /*
+                 * From Settings > Recording. "High" is the original
+                 * 44100 Hz / 128 kbps, and is the default.
+                 */
+                val quality =
+                    AppSettings(this@RecordingService).recordingQuality
+
                 setAudioSamplingRate(
-                    44100
+                    quality.sampleRate
                 )
 
                 setAudioEncodingBitRate(
-                    128000
+                    quality.bitRate
                 )
 
                 setOutputFile(

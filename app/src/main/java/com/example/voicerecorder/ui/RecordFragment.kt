@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.example.voicerecorder.service.RecordingService
+import com.example.voicerecorder.settings.AppSettings
 import com.example.voicerecorder.summary.SavedRecording
 import com.example.voicerecorder.summary.SummaryWorker
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
     private lateinit var stateDone: View
 
     private lateinit var tvTimer: TextView
+    private lateinit var timerRow: View
     private lateinit var tvProgressTitle: TextView
     private lateinit var tvProgressSubtitle: TextView
     private lateinit var tvProgressHint: TextView
@@ -101,6 +103,7 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         stateDone = view.findViewById(R.id.stateDone)
 
         tvTimer = view.findViewById(R.id.tvTimer)
+        timerRow = view.findViewById(R.id.timerRow)
         tvProgressTitle = view.findViewById(R.id.tvProgressTitle)
         tvProgressSubtitle = view.findViewById(R.id.tvProgressSubtitle)
         tvProgressHint = view.findViewById(R.id.tvProgressHint)
@@ -289,6 +292,9 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         when (State.stage) {
             Stage.RECORDING -> {
+                // Settings > Recording can hide the timer.
+                timerRow.isVisible = AppSettings(requireContext()).showDuration
+
                 updateTimer()
                 handler.postDelayed(timerTick, 1000L)
             }

@@ -1,5 +1,6 @@
 package com.example.voicerecorder.summary
 
+import com.example.voicerecorder.settings.AppSettings
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
@@ -38,6 +39,12 @@ class RecoveryWorker(
 
         // The "Music/App Records" folder (RELATIVE_PATH) only exists on Android 10+.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return Result.success()
+        }
+
+        // With auto-processing off, recordings are left alone on purpose.
+        if (!AppSettings(applicationContext).autoProcess) {
+            Log.i(TAG, "Auto-processing is off, skipping recovery")
             return Result.success()
         }
 

@@ -1,5 +1,6 @@
 package com.example.voicerecorder.summary
 
+import com.example.voicerecorder.settings.AppSettings
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -125,7 +126,11 @@ class SummaryWorker(
                     else -> e is IOException
                 }
 
-            if (retryable && runAttemptCount < MAX_RETRIES) {
+            // Settings > AI & Processing can turn retries off.
+            val maxRetries =
+                if (AppSettings(applicationContext).retryFailed) MAX_RETRIES else 0
+
+            if (retryable && runAttemptCount < maxRetries) {
 
                 Log.w(TAG, "Summary attempt ${runAttemptCount + 1} failed, retrying", e)
 
@@ -291,12 +296,20 @@ class SummaryWorker(
             audioUri: String
         ) {
 
+            // Settings > AI & Processing decides whether mobile data is allowed.
+            val network =
+                if (AppSettings(context).processOnMobileData) {
+                    NetworkType.CONNECTED
+                } else {
+                    NetworkType.UNMETERED
+                }
+
             val request =
                 OneTimeWorkRequestBuilder<SummaryWorker>()
                     .setInputData(workDataOf(KEY_AUDIO_URI to audioUri))
                     .setConstraints(
                         Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .setRequiredNetworkType(network)
                             .build()
                     )
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)

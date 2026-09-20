@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Base64OutputStream
 import com.example.voicerecorder.BuildConfig
+import com.example.voicerecorder.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -37,6 +38,29 @@ class GeminiSummarizer(
         val failure: FailureReason,
         val retryable: Boolean = false
     ) : Exception(message)
+
+    private val settings =
+        AppSettings(context)
+
+    /** The model chosen in Settings > AI & Processing. */
+    private val generateUrl: String
+        get() = "$BASE_URL/v1beta/models/${settings.geminiModel}:generateContent"
+
+    /**
+     * The prompt, plus any terms the user added in Settings.
+     */
+    private fun prompt(): String {
+
+        val extra =
+            settings.knownTerms
+
+        if (extra.isEmpty()) {
+            return PROMPT
+        }
+
+        return PROMPT + "\n\nAlso use these exact spellings when a word sounds like one of them: " +
+                extra.joinToString(", ") + "."
+    }
 
     suspend fun summarize(
         audioUri: Uri
@@ -118,7 +142,7 @@ class GeminiSummarizer(
                 .toString()
                 .split(AUDIO_PLACEHOLDER)
 
-        return json(GENERATE_URL, "POST") {
+        return json(generateUrl, "POST") {
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setChunkedStreamingMode(0)
@@ -165,7 +189,7 @@ class GeminiSummarizer(
             val body =
                 requestBody(audioPart).toString()
 
-            return json(GENERATE_URL, "POST") {
+            return json(generateUrl, "POST") {
                 writeJson(body)
             }
 
@@ -253,7 +277,7 @@ class GeminiSummarizer(
         val parts =
             JSONArray()
                 .put(audioPart)
-                .put(JSONObject().put("text", PROMPT))
+                .put(JSONObject().put("text", prompt()))
 
         return JSONObject()
             .put(
@@ -477,14 +501,11 @@ class GeminiSummarizer(
          * silence instead of inventing a summary (the bigger flash
          * models hallucinated content for silent audio).
          */
-        private const val MODEL =
+        const val DEFAULT_MODEL =
             "gemini-3.5-flash-lite"
 
         private const val BASE_URL =
             "https://generativelanguage.googleapis.com"
-
-        private const val GENERATE_URL =
-            "$BASE_URL/v1beta/models/$MODEL:generateContent"
 
         private const val MIME_TYPE =
             "audio/mp3"
@@ -537,7 +558,7 @@ class GeminiSummarizer(
          * recordings (e.g. "DBMS" heard as "TBS 7"). Gemini is told to use
          * these spellings when the audio and the context fit. Extend freely.
          */
-        private val KNOWN_TERMS =
+        val KNOWN_TERMS =
             listOf(
                 "DBMS", "SQL", "MySQL", "DSA", "OOP", "OS", "CN", "COA", "TOC", "AI", "ML",
                 "Android", "Android Studio", "Kotlin", "Java", "Python", "C++", "JavaScript",
