@@ -62,6 +62,11 @@ dependencies {
     // Background job for the Gemini summary (2.8.x supports compileSdk 33)
     implementation 'androidx.work:work-runtime-ktx:2.8.1'
 
+    // UI: fragments per screen, coroutines tied to the view lifecycle
+    implementation 'androidx.fragment:fragment-ktx:1.5.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.0'
+
     testImplementation 'junit:junit:4.13.2'
 
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

@@ -1,3 +1,80 @@
 <resources>
-    <string name="app_name">VoiceRecorder</string>
+    <string name="app_name">DayTrace</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_record">Record</string>
+    <string name="nav_history">History</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Record -->
+    <string name="record_title">Voice Recorder</string>
+    <string name="record_subtitle">Capture your thoughts.\nLet AI organize them.</string>
+    <string name="record_hint">Tap to start recording</string>
+    <string name="record_start">START</string>
+    <string name="record_stop">STOP</string>
+    <string name="record_recording">Recording…</string>
+    <string name="record_processing">Processing</string>
+    <string name="record_processing_subtitle">Converting to MP3…</string>
+    <string name="record_processing_hint">This may take a few seconds.</string>
+    <string name="record_analyzing">Analyzing</string>
+    <string name="record_analyzing_subtitle">Letting Gemini understand\nyour recording…</string>
+    <string name="record_done">All Done!</string>
+    <string name="record_done_subtitle">Your recording has been\nsummarized and saved.</string>
+    <string name="record_failed">Couldn\'t analyze</string>
+    <string name="record_view_in_history">View in History</string>
+    <string name="record_try_again">Back to recorder</string>
+    <string name="step_recording_stopped">Recording stopped</string>
+    <string name="step_converting">Converting to MP3</string>
+    <string name="step_analyzing">Analyzing with Gemini</string>
+    <string name="step_summary">Generating summary</string>
+    <string name="step_saving">Saving to DayTrace</string>
+    <string name="label_category">Category</string>
+    <string name="label_summary">Summary</string>
+    <string name="label_saved_on">Saved on</string>
+    <string name="label_original_audio">Original Audio</string>
+
+    <string name="microphone_required">Microphone permission is required</string>
+    <string name="record_failed_recording">The recording could not be saved.</string>
+    <string name="nothing_worth_keeping">Nothing to note</string>
+    <string name="nothing_worth_keeping_detail">Nothing worth keeping was said in this recording.</string>
+    <string name="summary_with_more">%1$s  (+%2$d more)</string>
+    <string name="recordings_count">%1$d recordings</string>
+    <string name="recordings_on_day">%1$d recordings on this day</string>
+    <string name="one_recording_on_day">1 recording on this day</string>
+    <string name="one_recording">1 recording</string>
+    <string name="open_note">Open note</string>
+    <string name="copy_text">Copy text</string>
+    <string name="copied">Copied</string>
+    <string name="tag_format">#%1$s</string>
+
+    <!-- History -->
+    <string name="history_title">History</string>
+    <string name="history_subtitle">Browse your recordings by date and category.</string>
+    <string name="filter_by_category">Filter by Category</string>
+    <string name="category_all">All</string>
+    <string name="search">Search</string>
+    <string name="more_options">More options</string>
+    <string name="previous_month">Previous month</string>
+    <string name="next_month">Next month</string>
+    <string name="back">Back</string>
+    <string name="open_calendar">Jump to date</string>
+    <string name="audio_deleted_footer">Audio files are automatically deleted after successful processing.</string>
+    <string name="audio_deleted_detail">Audio file has been deleted after successful processing.</string>
+    <string name="audio_kept_detail">Audio file is still on this device.</string>
+    <string name="no_recordings_day">No recordings on this day.</string>
+    <string name="no_recordings_yet">Your recordings will appear here once you record something.</string>
+
+    <!-- Stats -->
+    <string name="stats_title">Your Mind in Numbers</string>
+    <string name="stats_subtitle">A quick look at your recordings.</string>
+    <string name="stats_week">This Week</string>
+    <string name="stats_month">This Month</string>
+    <string name="stats_all">All Time</string>
+    <string name="recent_activity">Recent Activity</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Nothing to configure yet.</string>
+
 </resources>

@@ -18,8 +18,8 @@ import java.net.URL
 
 /**
  * Sends a saved recording to the Gemini API and returns its transcript
- * plus the short notes worth keeping, each with exactly one category
- * (see [GeminiSummarizer.CATEGORIES]).
+ * plus the short notes worth keeping, each with a title, tags and exactly
+ * one category (see [GeminiSummarizer.CATEGORIES]).
  *
  * Small recordings are sent inline in a single request. Larger ones are
  * uploaded through the Gemini Files API first (inline requests are capped
@@ -367,6 +367,19 @@ class GeminiSummarizer(
                 val category =
                     item.optString("category").trim()
 
+                val title =
+                    item.optString("title").trim()
+                        .ifEmpty { Note.titleFrom(noteText) }
+
+                val tagList =
+                    item.optJSONArray("tags")
+
+                val tags =
+                    (0 until (tagList?.length() ?: 0))
+                        .mapNotNull { tagList?.optString(it)?.trim()?.removePrefix("#")?.lowercase() }
+                        .filter { it.isNotEmpty() }
+                        .take(MAX_TAGS)
+
                 if (noteText.isEmpty()) {
                     throw GeminiException(
                         "Gemini returned an empty note",
@@ -381,7 +394,7 @@ class GeminiSummarizer(
                     )
                 }
 
-                Note(category, noteText)
+                Note(category, noteText, title, tags)
             }
         )
     }
@@ -504,14 +517,18 @@ class GeminiSummarizer(
         private const val MAX_OUTPUT_TOKENS =
             65_536
 
+        private const val MAX_TAGS =
+            3
+
         /*
          * Every note gets exactly one of these.
          * The same list is sent to Gemini as the allowed values.
          */
         val CATEGORIES =
             listOf(
-                "Remember",
                 "Thoughts",
+                "Idea",
+                "Remember",
                 "Random Gossip"
             )
 
@@ -568,11 +585,16 @@ class GeminiSummarizer(
             - "Call the plumber before Friday, because the landlord is visiting on Saturday." becomes "Call the plumber before Friday; the landlord visits on Saturday."
             Add nothing that was not said. Never refer to "the speaker", "the user" or "the recording".
 
+            Also give each note, for display in the app:
+            - title: 2 to 5 words naming what the note is about, in sentence case and with no full stop ("DBMS assignment", "Login screen animation", "Farewell party hall"). It must come from the note itself, never from anything that was not said.
+            - tags: 2 or 3 short lowercase labels for finding the note later, one or two words each, with no "#" ("college", "assignment", "app idea"). Use plain everyday words.
+
             STEP 5 - CATEGORIZE (exactly one category per note)
             Decide in this order, and give the same kind of note the same category every time:
             1. Remember: something to DO or to REMEMBER. A task, reminder, deadline, appointment or meeting, an instruction to follow, or a fact to keep (a date, a number, where something is). This includes work that has been decided or committed to ("finish the database connection tonight", "push the code before midnight"). Words like "need to", "have to", "must", "don't forget", "remind me" point to Remember.
-            2. Thoughts: an idea, suggestion, proposal, possible feature, plan that is not yet decided, observation, opinion or concept ("we could add dark mode", "maybe let users edit their profile picture", "the library Wi-Fi is faster than the hostel's"). Words like "maybe", "we could", "I was thinking", "we should consider", "we'll decide later" point to Thoughts.
-            3. Random Gossip: casual information about people or events that is worth keeping but is neither a task nor an idea ("Aman got an internship at Zomato starting in January").
+            2. Idea: something that could be built, created, added or tried, and that nobody has committed to yet: a proposal, concept, feature, project or solution ("we could add dark mode", "maybe let users edit their profile picture", "make an app that tracks sold-out canteen items"). Words like "maybe we could", "we should add", "what if we", "I was thinking we could" point to Idea.
+            3. Thoughts: an opinion, reflection, feeling or observation, with nothing to build or do ("the library Wi-Fi is faster than the hostel's", "online classes are more tiring than offline ones", "working at night feels more productive").
+            4. Random Gossip: casual information about people or events that is worth keeping but is neither a task, an idea nor a personal reflection ("Aman got an internship at Zomato starting in January").
             Small talk that is not worth keeping gets no note at all.
 
             STEP 6 - NO DUPLICATES
@@ -612,10 +634,15 @@ class GeminiSummarizer(
                     "type": "OBJECT",
                     "properties": {
                       "note": { "type": "STRING" },
+                      "title": { "type": "STRING" },
+                      "tags": {
+                        "type": "ARRAY",
+                        "items": { "type": "STRING" }
+                      },
                       "category": { "type": "STRING", "enum": ${JSONArray(CATEGORIES)} }
                     },
-                    "required": ["note", "category"],
-                    "propertyOrdering": ["note", "category"]
+                    "required": ["note", "title", "tags", "category"],
+                    "propertyOrdering": ["note", "title", "tags", "category"]
                   }
                 }
               },
@@ -682,8 +709,38 @@ data class RecordingNotes(
 
 /**
  * One short note from a recording.
+ *
+ * [title] and [tags] are for display; notes saved before they existed
+ * fall back to [titleFrom] and an empty tag list.
  */
 data class Note(
     val category: String,
-    val text: String
-)
+    val text: String,
+    val title: String = titleFrom(text),
+    val tags: List<String> = emptyList()
+) {
+
+    companion object {
+
+        private const val MAX_TITLE_WORDS =
+            5
+
+        /**
+         * A short title made from the note itself, e.g.
+         * "Submit the DBMS assignment tomorrow." -> "Submit the DBMS assignment"
+         */
+        fun titleFrom(
+            text: String
+        ): String {
+
+            val words =
+                text.trim().split(Regex("\\s+"))
+
+            return words
+                .take(MAX_TITLE_WORDS)
+                .joinToString(" ")
+                .trimEnd('.', ',', ';', ':')
+                .ifEmpty { "Note" }
+        }
+    }
+}

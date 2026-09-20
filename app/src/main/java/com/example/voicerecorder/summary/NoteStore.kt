@@ -60,7 +60,9 @@ class NoteStore(
                             result.notes.map {
                                 JSONObject()
                                     .put("category", it.category)
+                                    .put("title", it.title)
                                     .put("note", it.text)
+                                    .put("tags", JSONArray(it.tags))
                             }
                         )
                     )
@@ -177,15 +179,75 @@ class NoteStore(
         json: JSONObject
     ): RecordingNotes? =
         runCatching {
-            val notes =
-                json.getJSONArray("notes")
-
             RecordingNotes(
                 transcript = json.getString("transcript"),
-                notes = (0 until notes.length()).map { index ->
-                    val note = notes.getJSONObject(index)
-                    Note(note.getString("category"), note.getString("note"))
-                }
+                notes = toNotes(json)
+            )
+        }.getOrNull()
+
+    /**
+     * Notes saved before titles and tags existed fall back to a title
+     * made from the note itself and no tags.
+     */
+    private fun toNotes(
+        json: JSONObject
+    ): List<Note> {
+
+        val notes =
+            json.optJSONArray("notes") ?: JSONArray()
+
+        return (0 until notes.length()).map { index ->
+
+            val note =
+                notes.getJSONObject(index)
+
+            val text =
+                note.getString("note")
+
+            val tags =
+                note.optJSONArray("tags")
+
+            Note(
+                category = note.getString("category"),
+                text = text,
+                title = note.optString("title").trim().ifEmpty { Note.titleFrom(text) },
+                tags = (0 until (tags?.length() ?: 0)).mapNotNull { tags?.optString(it) }
+            )
+        }
+    }
+
+    /**
+     * Every processed recording, newest first. Used by the history and
+     * stats screens; never touches the audio.
+     */
+    fun loadAll(): List<SavedRecording> =
+        directory
+            .listFiles { file -> file.extension == "json" }
+            ?.mapNotNull { file -> readJson(file)?.let { toSavedRecording(it) } }
+            ?.sortedByDescending { it.recordedAt }
+            .orEmpty()
+
+    private fun toSavedRecording(
+        json: JSONObject
+    ): SavedRecording? =
+        runCatching {
+
+            val name =
+                json.getString("recording")
+
+            val processedAt =
+                runCatching { Instant.parse(json.getString("processed_at")).toEpochMilli() }
+                    .getOrDefault(0L)
+
+            SavedRecording(
+                name = name,
+                audioUri = json.optString("audio_uri"),
+                // "Voice_Recording_1789817319403" holds the time the recording started.
+                recordedAt = Regex("([0-9]{10,})").find(name)?.value?.toLongOrNull() ?: processedAt,
+                processedAt = processedAt,
+                outcome = json.optString("outcome", RecordingNotes.OUTCOME_NOTES),
+                transcript = json.optString("transcript"),
+                notes = toNotes(json)
             )
         }.getOrNull()
 
@@ -229,3 +291,17 @@ class NoteStore(
             3
     }
 }
+
+/**
+ * One processed recording as stored on the device, for the history,
+ * stats and note screens.
+ */
+data class SavedRecording(
+    val name: String,
+    val audioUri: String,
+    val recordedAt: Long,
+    val processedAt: Long,
+    val outcome: String,
+    val transcript: String,
+    val notes: List<Note>
+)

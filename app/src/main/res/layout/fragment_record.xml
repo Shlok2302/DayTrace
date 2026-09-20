@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- Top bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="6dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_leaf"
+            android:contentDescription="@null"
+            app:tint="@color/forest"
+/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="@string/app_name"
+            style="@style/Text.SectionTitle"
+            android:textSize="19sp" />
+
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_settings"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/settings_title" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Idle -->
+        <ScrollView
+            android:id="@+id/stateIdle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingHorizontal="28dp"
+                android:paddingVertical="24dp">
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/record_title"
+                    style="@style/Text.Display"
+                    android:textSize="30sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="@string/record_subtitle"
+                    style="@style/Text.Body" />
+
+                <FrameLayout
+                    android:layout_width="180dp"
+                    android:layout_height="180dp"
+                    android:layout_marginTop="34dp"
+                    android:background="@drawable/bg_circle_forest_soft">
+
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_mic_filled"
+                        android:contentDescription="@null"
+                        app:tint="@color/forest"
+/>
+
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="26dp"
+                    android:text="@string/record_hint"
+                    style="@style/Text.Label" />
+
+                <LinearLayout
+                    android:id="@+id/btnStart"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="30dp"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:background="@drawable/bg_button_forest"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_mic_filled"
+                        android:contentDescription="@null"
+                        app:tint="@color/on_forest"
+/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="@string/record_start"
+                        android:textColor="@color/on_forest"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08" />
+
+                </LinearLayout>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- Recording -->
+        <LinearLayout
+            android:id="@+id/stateRecording"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="28dp"
+            android:visibility="gone">
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/record_title"
+                style="@style/Text.Display"
+                android:textSize="30sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/record_recording"
+                style="@style/Text.Body" />
+
+            <FrameLayout
+                android:layout_width="170dp"
+                android:layout_height="170dp"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/bg_circle_record">
+
+                <ImageView
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_mic_filled"
+                    android:contentDescription="@null"
+                    app:tint="@color/record_red"
+/>
+
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:background="@drawable/bg_dot"
+                    android:backgroundTint="@color/record_red" />
+
+                <TextView
+                    android:id="@+id/tvTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="00:00"
+                    style="@style/Text.BodyStrong"
+                    android:textSize="17sp" />
+
+            </LinearLayout>
+
+            <com.example.voicerecorder.ui.WaveformView
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="14dp" />
+
+            <LinearLayout
+                android:id="@+id/btnStop"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="26dp"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@drawable/bg_button_record"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_stop"
+                    android:contentDescription="@null"
+                    app:tint="@color/record_red"
+/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/record_stop"
+                    android:textColor="@color/record_red"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08" />
+
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+        </LinearLayout>
+
+        <!-- Processing / Analyzing -->
+        <ScrollView
+            android:id="@+id/stateProgress"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="16dp">
+
+                <TextView
+                    android:id="@+id/tvProgressTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/record_processing"
+                    style="@style/Text.Display"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:id="@+id/tvProgressSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="@string/record_processing_subtitle"
+                    style="@style/Text.Body" />
+
+                <FrameLayout
+                    android:layout_width="150dp"
+                    android:layout_height="150dp"
+                    android:layout_marginTop="22dp">
+
+                    <com.example.voicerecorder.ui.ProgressRingView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <FrameLayout
+                        android:layout_width="112dp"
+                        android:layout_height="112dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_circle_surface">
+
+                        <ImageView
+                            android:id="@+id/imgProgress"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_document"
+                            android:contentDescription="@null"
+                            app:tint="@color/forest"
+/>
+
+                    </FrameLayout>
+
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvProgressHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/record_processing_hint"
+                    style="@style/Text.Caption" />
+
+                <LinearLayout
+                    android:id="@+id/steps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card"
+                    android:padding="20dp" />
+
+            </LinearLayout>
+
+        </ScrollView>
+
+        <!-- All done -->
+        <ScrollView
+            android:id="@+id/stateDone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="20dp">
+
+                <FrameLayout
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:background="@drawable/bg_circle_forest_soft">
+
+                    <ImageView
+                        android:id="@+id/imgDone"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_check_big"
+                        android:contentDescription="@null" />
+
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvDoneTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:text="@string/record_done"
+                    style="@style/Text.Display"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:id="@+id/tvDoneSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="@string/record_done_subtitle"
+                    style="@style/Text.Body" />
+
+                <LinearLayout
+                    android:id="@+id/doneCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="2dp"
+                            android:src="@drawable/ic_music_note"
+                            android:contentDescription="@null"
+                            app:tint="@color/text_tertiary"
+/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_category"
+                                style="@style/Text.Caption" />
+
+                            <TextView
+                                android:id="@+id/tvDoneCategory"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                style="@style/Text.BodyStrong" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="16dp"
+                        android:background="@color/divider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="2dp"
+                            android:src="@drawable/ic_document"
+                            android:contentDescription="@null"
+                            app:tint="@color/text_tertiary"
+/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_summary"
+                                style="@style/Text.Caption" />
+
+                            <TextView
+                                android:id="@+id/tvDoneSummary"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                style="@style/Text.BodyStrong" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="16dp"
+                        android:background="@color/divider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="2dp"
+                            android:src="@drawable/ic_calendar"
+                            android:contentDescription="@null"
+                            app:tint="@color/text_tertiary"
+/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_saved_on"
+                                style="@style/Text.Caption" />
+
+                            <TextView
+                                android:id="@+id/tvDoneSavedOn"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                style="@style/Text.BodyStrong" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnDone"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="24dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_button_forest"
+                    android:text="@string/record_view_in_history"
+                    android:textColor="@color/on_forest"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+        </ScrollView>
+
+    </FrameLayout>
+
+</LinearLayout>

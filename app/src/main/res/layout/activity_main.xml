@@ -1,44 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp">
+    android:background="@color/background">
 
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Voice Recorder"
-        android:textSize="30sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="40dp" />
-
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Ready"
-        android:textSize="20sp"
-        android:layout_marginBottom="30dp" />
-
-    <Button
-        android:id="@+id/btnStart"
-        android:layout_width="220dp"
-        android:layout_height="60dp"
-        android:text="START"
-        android:textSize="18sp"
-        android:layout_marginBottom="20dp" />
-
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="220dp"
-        android:layout_height="60dp"
-        android:text="STOP"
-        android:textSize="18sp"
-        android:enabled="false" />
+        android:background="@color/surface"
+        android:minHeight="64dp"
+        app:elevation="0dp"
+        app:itemIconTint="@color/nav_item"
+        app:itemTextColor="@color/nav_item"
+        app:itemRippleColor="@color/forest_soft"
+        app:itemActiveIndicatorStyle="@null"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav" />
 
 </LinearLayout>

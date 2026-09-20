@@ -1,10 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+
+    <!-- Surfaces -->
+    <color name="background">#FAF7F1</color>
+    <color name="surface">#FFFDF9</color>
+    <color name="surface_sunken">#F3EFE7</color>
+    <color name="stroke">#EBE5DA</color>
+    <color name="divider">#F0EBE1</color>
+
+    <!-- Brand -->
+    <color name="forest">#1B4332</color>
+    <color name="forest_dark">#143428</color>
+    <color name="forest_soft">#E4EDE6</color>
+    <color name="on_forest">#FFFFFF</color>
+
+    <!-- Text -->
+    <color name="text_primary">#1A211C</color>
+    <color name="text_secondary">#6B6F68</color>
+    <color name="text_tertiary">#9A9C94</color>
+
+    <!-- Recording -->
+    <color name="record_red">#D9534F</color>
+    <color name="record_red_soft">#FBE6E4</color>
+
+    <!-- Categories -->
+    <color name="thoughts">#C75B6E</color>
+    <color name="thoughts_soft">#FAE0E4</color>
+    <color name="thoughts_tint">#FDF0F2</color>
+
+    <color name="idea">#D79833</color>
+    <color name="idea_soft">#FBE7C4</color>
+    <color name="idea_tint">#FDF6E9</color>
+
+    <color name="remember">#3F7A52</color>
+    <color name="remember_soft">#D8EBDB</color>
+    <color name="remember_tint">#EFF6F0</color>
+
+    <color name="gossip">#4A79B5</color>
+    <color name="gossip_soft">#D9E5F5</color>
+    <color name="gossip_tint">#EFF4FB</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
 </resources>

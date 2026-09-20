@@ -51,7 +51,9 @@ class SummaryWorker(
         val store =
             NoteStore(applicationContext)
 
-        sendStatus(ACTION_SUMMARY_STARTED)
+        sendStatus(ACTION_SUMMARY_STARTED) {
+            putExtra(EXTRA_AUDIO_URI, audioUri)
+        }
 
         return try {
 
@@ -79,6 +81,11 @@ class SummaryWorker(
                         Log.i(TAG, "  ${note.category}: ${note.text}")
                     }
 
+                    // Progress for the record screen: Gemini is done, saving now.
+                    sendStatus(ACTION_SUMMARY_SAVING) {
+                        putExtra(EXTRA_AUDIO_URI, audioUri)
+                    }
+
                     // Save BEFORE deleting anything. Throws StorageException on failure.
                     val file =
                         store.save(uri, result)
@@ -97,6 +104,7 @@ class SummaryWorker(
 
             // Two parallel lists: categories[i] belongs to notes[i].
             sendStatus(ACTION_SUMMARY_COMPLETE) {
+                putExtra(EXTRA_AUDIO_URI, audioUri)
                 putExtra(EXTRA_OUTCOME, result.outcome)
                 putStringArrayListExtra(EXTRA_CATEGORIES, ArrayList(result.notes.map { it.category }))
                 putStringArrayListExtra(EXTRA_NOTES, ArrayList(result.notes.map { it.text }))
@@ -130,6 +138,7 @@ class SummaryWorker(
             runCatching { store.recordFailure(uri, failureReason(e)) }
 
             sendStatus(ACTION_SUMMARY_FAILED) {
+                putExtra(EXTRA_AUDIO_URI, audioUri)
                 putExtra(EXTRA_FAILURE, failureReason(e).name)
                 putExtra(EXTRA_ERROR, errorMessage(e))
             }
@@ -211,8 +220,16 @@ class SummaryWorker(
         const val ACTION_SUMMARY_STARTED =
             "com.example.voicerecorder.SUMMARY_STARTED"
 
+        /** Gemini answered; the transcript and notes are being saved. */
+        const val ACTION_SUMMARY_SAVING =
+            "com.example.voicerecorder.SUMMARY_SAVING"
+
         const val ACTION_SUMMARY_COMPLETE =
             "com.example.voicerecorder.SUMMARY_COMPLETE"
+
+        /** Which recording an update is about. */
+        const val EXTRA_AUDIO_URI =
+            "audio_uri"
 
         const val ACTION_SUMMARY_FAILED =
             "com.example.voicerecorder.SUMMARY_FAILED"
