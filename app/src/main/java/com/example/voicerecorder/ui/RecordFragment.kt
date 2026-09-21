@@ -158,6 +158,21 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         )
 
         State.expireIfStale()
+
+        // The screen may have missed the recorder stopping while the app was closed.
+        if (State.stage == Stage.RECORDING && !RecordingService.isRecording && State.pastStartGrace()) {
+            showRecorderStopped()
+            return
+        }
+
+        render()
+    }
+
+    /** "Recording..." is only shown while the recorder really runs. */
+    private fun showRecorderStopped() {
+        State.stage = Stage.FAILED
+        State.message = getString(R.string.record_failed_recording)
+        State.touch()
         render()
     }
 
@@ -200,6 +215,12 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
     }
 
     private fun stopRecording() {
+
+        // The recorder already stopped (e.g. it failed to start): nothing to convert.
+        if (!RecordingService.isRecording) {
+            showRecorderStopped()
+            return
+        }
 
         val intent =
             Intent(requireContext(), RecordingService::class.java)
@@ -466,6 +487,13 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         private var updatedAt: Long = 0L
 
+        /**
+         * START was tapped a moment ago; the service may not have started
+         * the microphone yet.
+         */
+        fun pastStartGrace(): Boolean =
+            SystemClock.elapsedRealtime() - startedAt > START_GRACE_MS
+
         fun touch() {
             updatedAt = SystemClock.elapsedRealtime()
         }
@@ -493,5 +521,8 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         private const val STALE_AFTER_MS =
             10 * 60 * 1000L
+
+        private const val START_GRACE_MS =
+            5_000L
     }
 }

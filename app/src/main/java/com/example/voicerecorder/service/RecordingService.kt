@@ -3,6 +3,7 @@ package com.example.voicerecorder.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.ContentValues
 import android.content.Intent
@@ -15,6 +16,7 @@ import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.example.voicerecorder.encoder.Mp3Converter
 import com.example.voicerecorder.settings.AppSettings
@@ -54,6 +56,15 @@ class RecordingService : Service() {
 
         private const val NOTIFICATION_ID =
             1001
+
+        /**
+         * True only while the microphone is really recording. The record
+         * screen checks it, so it never shows "Recording..." when the
+         * recorder failed to start or has already stopped.
+         */
+        @Volatile
+        var isRecording: Boolean = false
+            private set
     }
 
     override fun onCreate() {
@@ -204,6 +215,9 @@ class RecordingService : Service() {
                 start()
             }
 
+            isRecording =
+                true
+
             Log.d(
                 TAG,
                 "Recording started"
@@ -222,6 +236,12 @@ class RecordingService : Service() {
             mediaRecorder = null
 
             recordingFile = null
+
+            isRecording = false
+
+            sendBroadcastAction(
+                ACTION_RECORDING_FAILED
+            )
 
             stopForeground(
                 STOP_FOREGROUND_REMOVE
@@ -247,6 +267,9 @@ class RecordingService : Service() {
 
             return
         }
+
+        isRecording =
+            false
 
         Log.d(
             TAG,
@@ -673,7 +696,10 @@ class RecordingService : Service() {
                 text
             )
             .setSmallIcon(
-                R.drawable.ic_launcher_foreground
+                R.drawable.ic_mic
+            )
+            .setContentIntent(
+                openRecorder()
             )
             .setOngoing(true)
             .setCategory(
@@ -681,6 +707,24 @@ class RecordingService : Service() {
             )
             .build()
     }
+
+    /**
+     * Tapping the notification opens the app on the record screen,
+     * where the recording can be stopped.
+     */
+    private fun openRecorder(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_OPEN_RECORDER, true)
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                ),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
     private fun createNotificationChannel() {
 
@@ -761,6 +805,33 @@ class RecordingService : Service() {
         super.onTaskRemoved(
             rootIntent
         )
+    }
+
+    override fun onDestroy() {
+
+        /*
+         * Stopped without STOP (e.g. by the system): free the microphone
+         * and let the record screen know nothing is recording any more.
+         */
+        if (mediaRecorder != null) {
+
+            Log.w(
+                TAG,
+                "Service destroyed while recording"
+            )
+
+            runCatching { mediaRecorder?.release() }
+
+            mediaRecorder = null
+
+            sendBroadcastAction(
+                ACTION_RECORDING_FAILED
+            )
+        }
+
+        isRecording = false
+
+        super.onDestroy()
     }
 
     override fun onBind(

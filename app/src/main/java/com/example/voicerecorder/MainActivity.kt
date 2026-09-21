@@ -64,7 +64,10 @@ class MainActivity : AppCompatActivity() {
         handleNotificationTap(intent)
     }
 
-    /** A tapped reminder opens its note; a processing update opens History. */
+    /**
+     * A tapped reminder opens its note, a processing update opens History,
+     * and the recording notification opens the record screen.
+     */
     private fun handleNotificationTap(
         intent: Intent?
     ) {
@@ -80,10 +83,17 @@ class MainActivity : AppCompatActivity() {
 
             intent?.hasExtra(EXTRA_OPEN_HISTORY) == true ->
                 openHistory()
+
+            intent?.hasExtra(EXTRA_OPEN_RECORDER) == true -> {
+                // Forget the current tab so the record screen is shown even if it already is.
+                currentTab = 0
+                bottomNav.selectedItemId = R.id.nav_record
+            }
         }
 
         intent?.removeExtra(EXTRA_OPEN_NOTE)
         intent?.removeExtra(EXTRA_OPEN_HISTORY)
+        intent?.removeExtra(EXTRA_OPEN_RECORDER)
     }
 
     /**
@@ -192,5 +202,9 @@ class MainActivity : AppCompatActivity() {
         /** Set on a processing update's tap intent. */
         const val EXTRA_OPEN_HISTORY =
             "open_history"
+
+        /** Set on the recording notification's tap intent. */
+        const val EXTRA_OPEN_RECORDER =
+            "open_recorder"
     }
 }
