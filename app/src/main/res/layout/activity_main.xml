@@ -1,35 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/background">
 
-    <FrameLayout
-        android:id="@+id/container"
+    <!--
+        The app background (drawable-nodpi for light mode, drawable-night-nodpi
+        for dark mode). It fills the whole screen, under the status bar too;
+        the screens themselves are transparent and draw over it.
+    -->
+    <ImageView
+        android:id="@+id/appBackground"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/app_background"
+        android:importantForAccessibility="no"
+        android:contentDescription="@null" />
 
-    <View
+    <LinearLayout
+        android:id="@+id/content"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/surface"
-        android:minHeight="64dp"
-        app:elevation="0dp"
-        app:itemIconTint="@color/nav_item"
-        app:itemTextColor="@color/nav_item"
-        app:itemRippleColor="@color/forest_soft"
-        app:itemActiveIndicatorStyle="@null"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav" />
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
-</LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/surface"
+            android:minHeight="64dp"
+            app:elevation="0dp"
+            app:itemIconTint="@color/nav_item"
+            app:itemTextColor="@color/nav_item"
+            app:itemRippleColor="@color/forest_soft"
+            app:itemActiveIndicatorStyle="@null"
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/bottom_nav" />
+
+    </LinearLayout>
+
+</FrameLayout>

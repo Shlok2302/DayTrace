@@ -8,6 +8,10 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
@@ -40,6 +44,8 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
+        drawBackgroundBehindStatusBar()
+
         bottomNav = findViewById(R.id.bottomNav)
 
         bottomNav.setOnItemSelectedListener { item ->
@@ -55,6 +61,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         askForNotificationsOnce()
+    }
+
+    /**
+     * The background image also fills the area behind the (transparent)
+     * status bar; the screens start below it. The bottom bar pads itself
+     * for the gesture bar, and Android still makes room for the keyboard.
+     */
+    private fun drawBackgroundBehindStatusBar() {
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.content)) { view, insets ->
+
+            view.updatePadding(top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top)
+
+            insets
+        }
     }
 
     override fun onNewIntent(
