@@ -131,9 +131,99 @@
 
     <!-- Dialogs -->
     <string name="close">Close</string>
-    <string name="not_available_yet">This section isn\'t available yet.</string>
     <string name="storage_summary">%1$d recordings processed\n%2$d notes saved\n%3$.1f KB used by notes\n%4$d audio files still on this device</string>
     <string name="privacy_details">Recordings are sent to the Gemini API for transcription and notes.\n\nNotes and transcripts are saved only on this device, in the app\'s private storage.\n\nThe audio file is deleted from your device once its notes are saved. If processing fails, the audio is kept.</string>
+    <!-- Notes: delete, done, recycle bin -->
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="mark_done">Mark as done</string>
+    <string name="moved_to_bin">Moved to the recycle bin</string>
+    <string name="marked_done">Marked as done. It\'s in the recycle bin.</string>
+    <string name="restore">Restore</string>
+    <string name="delete_forever">Delete forever</string>
+    <string name="restored">Note restored</string>
+    <string name="deleted_forever">Note deleted for good</string>
+    <string name="delete_forever_confirm_title">Delete this note forever?</string>
+    <string name="delete_forever_confirm_message">It can\'t be restored afterwards.</string>
+
+    <string name="settings_recycle_bin">Recycle bin</string>
+    <string name="settings_recycle_bin_subtitle">Deleted and completed notes</string>
+    <string name="bin_subtitle">Deleted and completed notes stay here for 30 days, then they are deleted for good.</string>
+    <string name="bin_empty">The recycle bin is empty.</string>
+    <string name="bin_empty_all">Empty recycle bin</string>
+    <string name="bin_emptied">Recycle bin emptied</string>
+    <string name="bin_empty_confirm_title">Empty the recycle bin?</string>
+    <plurals name="bin_empty_confirm_message">
+        <item quantity="one">%d note will be deleted for good. This can\'t be undone.</item>
+        <item quantity="other">%d notes will be deleted for good. This can\'t be undone.</item>
+    </plurals>
+    <string name="bin_status_done">Completed %1$s</string>
+    <string name="bin_status_deleted">Deleted %1$s</string>
+    <string name="bin_status">%1$s · %2$s</string>
+    <plurals name="bin_days_left">
+        <item quantity="one">deleted for good tomorrow</item>
+        <item quantity="other">deleted for good in %d days</item>
+    </plurals>
+    <string name="when_today">today</string>
+    <string name="when_yesterday">yesterday</string>
+    <plurals name="when_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <string name="label_in_bin">In the recycle bin</string>
+
+    <!-- Reminders -->
+    <string name="label_reminder">Reminder</string>
+    <string name="due_label">Due %1$s</string>
+    <string name="was_due_label">Was due %1$s</string>
+    <string name="reminders_at_one">You\'ll be reminded at %1$s.</string>
+    <string name="reminders_at_two">You\'ll be reminded at %1$s and %2$s.</string>
+    <string name="reminders_none_left">No reminders left for this one.</string>
+    <string name="reminders_off">Reminders are off in Settings &gt; Notifications.</string>
+    <string name="reminders_blocked">Notifications are off for DayTrace, so the reminder can\'t be shown. Turn them on in Settings &gt; Notifications.</string>
+
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_reminders_description">Reminders for things you said you need to do.</string>
+    <string name="channel_updates">Processing updates</string>
+    <string name="channel_updates_description">When a recording has been turned into notes.</string>
+    <string name="reminder_early">Due %1$s. Have you done it?</string>
+    <string name="reminder_due">It\'s due now. Have you done it?</string>
+    <string name="reminder_day">It\'s due today. Have you done it?</string>
+    <string name="reminder_done">Done</string>
+    <string name="reminder_not_yet">Not yet</string>
+    <string name="reminder_marked_done">Done: %1$s</string>
+    <string name="reminder_moved_to_bin">Moved to the recycle bin. You can restore it from Settings.</string>
+    <plurals name="update_notes_title">
+        <item quantity="one">%d note saved</item>
+        <item quantity="other">%d notes saved</item>
+    </plurals>
+    <string name="update_nothing_title">Recording processed</string>
+    <string name="update_nothing_text">Nothing in it was worth a note.</string>
+    <string name="update_failed_title">Couldn\'t analyze your recording</string>
+    <string name="update_failed_text">%1$s The recording is kept.</string>
+
+    <!-- Settings > Notifications -->
+    <string name="settings_notifications_page_subtitle">Reminders and updates from DayTrace.</string>
+    <string name="notifications_allow">Allow notifications</string>
+    <string name="notifications_allow_on">DayTrace can show notifications.</string>
+    <string name="notifications_allow_off">Turned off. Reminders can\'t be shown.</string>
+    <string name="value_on">On</string>
+    <string name="value_off">Off</string>
+    <string name="task_reminders">Task reminders</string>
+    <string name="task_reminders_subtitle">Remind you about Remember notes that have a deadline.</string>
+    <string name="early_reminder">Early reminder</string>
+    <string name="early_reminder_subtitle">An extra reminder before the deadline.</string>
+    <string name="early_reminder_off">Off</string>
+    <string name="early_reminder_minutes">%d min before</string>
+    <string name="early_reminder_hour">1 hour before</string>
+    <string name="exact_reminders">Exact reminder times</string>
+    <string name="exact_reminders_on">Reminders arrive on the minute.</string>
+    <string name="exact_reminders_off">Reminders may be up to 10 minutes late. Tap to allow.</string>
+    <string name="value_allowed">Allowed</string>
+    <string name="value_not_allowed">Not allowed</string>
+    <string name="processing_updates">Processing updates</string>
+    <string name="processing_updates_subtitle">Tell you when a recording is turned into notes while the app is closed.</string>
+
     <string name="about_details">DayTrace %1$s\nAndroid %2$s\n\nRecord a thought, and it becomes short notes you can find later.</string>
 
 </resources>

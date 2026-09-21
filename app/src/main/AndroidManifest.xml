@@ -10,6 +10,15 @@
     <!-- Internet permission (Gemini summary) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Reminders and processing updates (asked for at runtime on Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Reminders on the minute; the user allows it under "Alarms & reminders" -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Alarms are cleared on restart, so the reminders are set again -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".DayTraceApplication"
         android:allowBackup="true"
@@ -36,6 +45,30 @@
             android:exported="false"
             android:stopWithTask="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- A reminder going off, and its "Done" / "Not yet" buttons -->
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false" />
+
+        <!--
+            Sets the reminders again after a restart, an app update, a time
+            change, or when exact alarms are allowed. Exported only because
+            these broadcasts come from the system; all of them are protected.
+        -->
+        <receiver
+            android:name=".reminders.RescheduleReceiver"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+
+        </receiver>
 
         <!-- Starts the Gemini summary after RecordingService saves an MP3 -->
         <receiver

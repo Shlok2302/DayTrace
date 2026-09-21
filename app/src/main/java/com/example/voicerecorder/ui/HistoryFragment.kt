@@ -246,7 +246,7 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         visible.forEach { entry ->
 
             val card =
-                NoteCards.historyCard(inflater, notes, entry) { open(it) }
+                NoteCards.historyCard(inflater, notes, entry, onOpen = { open(it) }, onChanged = { if (view != null) load() })
 
             val params =
                 LinearLayout.LayoutParams(

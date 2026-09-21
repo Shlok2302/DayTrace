@@ -107,7 +107,7 @@ class DayFragment : Fragment(R.layout.fragment_day) {
         dayEntries.forEach { entry ->
 
             val card =
-                NoteCards.dayCard(inflater, notes, entry) { open(it) }
+                NoteCards.dayCard(inflater, notes, entry, onOpen = { open(it) }, onChanged = { if (view != null) load() })
 
             val params =
                 LinearLayout.LayoutParams(

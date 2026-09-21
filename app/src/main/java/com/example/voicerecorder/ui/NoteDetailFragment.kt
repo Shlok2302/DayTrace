@@ -7,16 +7,24 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.R
+import com.example.voicerecorder.reminders.AppNotifications
+import com.example.voicerecorder.reminders.ReminderTimes
+import com.example.voicerecorder.settings.AppSettings
+import com.example.voicerecorder.summary.NoteActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 
 /**
  * One note: category, title, when it was recorded, the summary with its
- * tags, and what happened to the original audio.
+ * tags, its reminder (Remember notes with a deadline), and what happened
+ * to the original audio. A note in the recycle bin can be restored or
+ * deleted for good from here.
  */
 class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
 
@@ -29,6 +37,13 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
         view.findViewById<View>(R.id.btnBack).setOnClickListener {
             parentFragmentManager.popBackStack()
         }
+
+        load(view)
+    }
+
+    private fun load(
+        view: View
+    ) {
 
         val noteId =
             arguments?.getString(ARG_NOTE_ID).orEmpty()
@@ -83,14 +98,122 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
             if (audioExists) R.string.audio_kept_detail else R.string.audio_deleted_detail
         )
 
+        bindBin(view, entry)
+        bindReminder(view, entry)
+
         view.findViewById<View>(R.id.btnMore).setOnClickListener { anchor ->
-            android.widget.PopupMenu(requireContext(), anchor).apply {
-                menu.add(0, 1, 0, R.string.copy_text)
-                setOnMenuItemClickListener {
-                    copyToClipboard(entry)
-                    true
+            showMenu(anchor, entry)
+        }
+    }
+
+    /** Restore / Delete forever, for a note in the recycle bin. */
+    private fun bindBin(
+        view: View,
+        entry: NoteEntry
+    ) {
+
+        val inBin =
+            entry.note.isDeleted
+
+        view.findViewById<View>(R.id.binCard).isVisible = inBin
+
+        if (!inBin) {
+            return
+        }
+
+        view.findViewById<TextView>(R.id.tvBinStatus).text =
+            NoteCards.binStatus(requireContext(), entry.note)
+
+        view.findViewById<View>(R.id.btnRestore).setOnClickListener {
+            NoteCards.restore(it, entry) { if (this.view != null) load(view) }
+        }
+
+        view.findViewById<View>(R.id.btnDeleteForever).setOnClickListener {
+            NoteCards.deleteForever(it, entry) { close() }
+        }
+    }
+
+    /**
+     * When it is due, when the reminders come (or why they will not), and
+     * "Mark as done", which moves it to the recycle bin.
+     */
+    private fun bindReminder(
+        view: View,
+        entry: NoteEntry
+    ) {
+
+        val note =
+            entry.note
+
+        val show =
+            NoteCards.isReminder(note) && !note.isDeleted
+
+        view.findViewById<View>(R.id.reminderCard).isVisible = show
+
+        if (!show) {
+            return
+        }
+
+        view.findViewById<TextView>(R.id.tvDue).text = NoteCards.dueText(requireContext(), note)
+
+        val settings =
+            AppSettings(requireContext())
+
+        val alerts =
+            ReminderTimes.alerts(note.dueDate, note.dueTime, settings.earlyReminderMinutes, LocalDateTime.now())
+                .map { Notes.formatTime(Notes.millisOf(it.at)) }
+
+        view.findViewById<TextView>(R.id.tvReminderInfo).text =
+            when {
+                !settings.remindersEnabled -> getString(R.string.reminders_off)
+                alerts.isEmpty() -> getString(R.string.reminders_none_left)
+                !AppNotifications.canPost(requireContext()) -> getString(R.string.reminders_blocked)
+                alerts.size == 1 -> getString(R.string.reminders_at_one, alerts[0])
+                else -> getString(R.string.reminders_at_two, alerts[0], alerts[1])
+            }
+
+        view.findViewById<View>(R.id.btnMarkDone).setOnClickListener {
+            NoteCards.run(it, R.string.marked_done, ::close) { context ->
+                NoteActions.moveToBin(context, entry.id, done = true)
+            }
+        }
+    }
+
+    private fun showMenu(
+        anchor: View,
+        entry: NoteEntry
+    ) {
+
+        android.widget.PopupMenu(requireContext(), anchor).apply {
+
+            menu.add(0, 1, 0, R.string.copy_text)
+
+            if (entry.note.isDeleted) {
+                menu.add(0, 2, 1, R.string.restore)
+                menu.add(0, 3, 2, R.string.delete_forever)
+            } else {
+                menu.add(0, 4, 3, R.string.delete)
+            }
+
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> copyToClipboard(entry)
+                    2 -> NoteCards.restore(anchor, entry) { view?.let(::load) }
+                    3 -> NoteCards.deleteForever(anchor, entry, ::close)
+                    4 -> NoteCards.run(anchor, R.string.moved_to_bin, ::close) { context ->
+                        NoteActions.moveToBin(context, entry.id, done = false)
+                    }
                 }
-            }.show()
+                true
+            }
+
+        }.show()
+    }
+
+    /** Back to the list the note was opened from. */
+    private fun close() {
+        if (isAdded) {
+            parentFragmentManager.popBackStack()
         }
     }
 

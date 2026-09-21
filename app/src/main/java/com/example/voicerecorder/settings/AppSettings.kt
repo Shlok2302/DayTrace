@@ -52,6 +52,26 @@ class AppSettings(
         get() = prefs.getInt(KEY_MINIMUM_SECONDS, 3)
         set(value) = prefs.edit().putInt(KEY_MINIMUM_SECONDS, value).apply()
 
+    /** Remind about Remember notes that have a deadline. */
+    var remindersEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REMINDERS, true)
+        set(value) = prefs.edit().putBoolean(KEY_REMINDERS, value).apply()
+
+    /** How long before a deadline the first reminder comes (0 = only at the deadline). */
+    var earlyReminderMinutes: Int
+        get() = prefs.getInt(KEY_EARLY_REMINDER, 30)
+        set(value) = prefs.edit().putInt(KEY_EARLY_REMINDER, value).apply()
+
+    /** A notification when a recording has been turned into notes, or failed. */
+    var processingUpdates: Boolean
+        get() = prefs.getBoolean(KEY_PROCESSING_UPDATES, true)
+        set(value) = prefs.edit().putBoolean(KEY_PROCESSING_UPDATES, value).apply()
+
+    /** The notification permission is asked for once; after that, from Settings. */
+    var notificationPermissionAsked: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFICATION_ASKED, false)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_ASKED, value).apply()
+
     /** Light, dark, or whatever the phone is set to. */
     var theme: AppTheme
         get() = AppTheme.of(prefs.getString(KEY_THEME, null))
@@ -79,6 +99,13 @@ class AppSettings(
         private const val KEY_MINIMUM_SECONDS = "minimum_seconds"
         private const val KEY_TERMS = "known_terms"
         private const val KEY_THEME = "theme"
+        private const val KEY_REMINDERS = "reminders"
+        private const val KEY_EARLY_REMINDER = "early_reminder_minutes"
+        private const val KEY_PROCESSING_UPDATES = "processing_updates"
+        private const val KEY_NOTIFICATION_ASKED = "notification_permission_asked"
+
+        val EARLY_REMINDER_CHOICES =
+            listOf(0, 15, 30, 60)
 
         val MINIMUM_SECONDS_CHOICES =
             listOf(0, 3, 5, 10)

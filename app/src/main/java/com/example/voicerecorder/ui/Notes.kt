@@ -4,8 +4,10 @@ import android.content.Context
 import com.example.voicerecorder.summary.Note
 import com.example.voicerecorder.summary.NoteStore
 import com.example.voicerecorder.summary.SavedRecording
+import com.example.voicerecorder.reminders.ReminderTimes
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -16,12 +18,11 @@ import java.util.Locale
  */
 data class NoteEntry(
     val recording: SavedRecording,
-    val index: Int,
     val note: Note
 ) {
 
     val id: String
-        get() = "${recording.name}#$index"
+        get() = note.id
 
     val time: Long
         get() = recording.recordedAt
@@ -32,7 +33,8 @@ data class NoteEntry(
 
 /**
  * Reads the saved results (NoteStore) for the screens. Read only: it
- * never changes or deletes anything.
+ * never changes or deletes anything. Notes in the recycle bin are left
+ * out everywhere except [binEntries].
  */
 object Notes {
 
@@ -53,22 +55,41 @@ object Notes {
     fun entries(
         recordings: List<SavedRecording>
     ): List<NoteEntry> =
-        recordings
-            .flatMap { recording ->
-                recording.notes.mapIndexed { index, note -> NoteEntry(recording, index, note) }
-            }
+        allEntries(recordings)
+            .filterNot { it.note.isDeleted }
             .sortedByDescending { it.time }
 
+    /** The recycle bin, most recently deleted first. */
+    fun binEntries(
+        recordings: List<SavedRecording>
+    ): List<NoteEntry> =
+        allEntries(recordings)
+            .filter { it.note.isDeleted }
+            .sortedByDescending { it.note.deletedAt }
+
+    /** Any note, including one in the recycle bin. */
     fun entry(
         recordings: List<SavedRecording>,
         id: String
     ): NoteEntry? =
-        entries(recordings).firstOrNull { it.id == id }
+        allEntries(recordings).firstOrNull { it.id == id }
+
+    private fun allEntries(
+        recordings: List<SavedRecording>
+    ): List<NoteEntry> =
+        recordings.flatMap { recording ->
+            recording.notes.map { note -> NoteEntry(recording, note) }
+        }
 
     fun dateOf(
         millis: Long
     ): LocalDate =
         Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    fun millisOf(
+        time: LocalDateTime
+    ): Long =
+        time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     fun formatTime(
         millis: Long
@@ -89,4 +110,52 @@ object Notes {
         date: LocalDate
     ): String =
         date.format(monthFormat)
+
+    /**
+     * "today, 08:00 PM", "tomorrow", "Fri, 25 Sep, 09:30 AM": when a
+     * Remember note is due. Empty if it has no deadline.
+     */
+    fun formatDue(
+        note: Note
+    ): String {
+
+        val date =
+            runCatching { LocalDate.parse(note.dueDate) }.getOrNull() ?: return ""
+
+        val today =
+            LocalDate.now()
+
+        val day =
+            when (date) {
+                today -> "today"
+                today.plusDays(1) -> "tomorrow"
+                today.minusDays(1) -> "yesterday"
+                else -> date.format(dueDayFormat)
+            }
+
+        val time =
+            ReminderTimes.due(note.dueDate, note.dueTime)
+                ?.takeIf { note.dueTime.isNotEmpty() }
+                ?.format(timeFormat)
+
+        return if (time == null) day else "$day, $time"
+    }
+
+    /** True once a note's deadline has passed. */
+    fun isOverdue(
+        note: Note
+    ): Boolean {
+
+        val due =
+            ReminderTimes.due(note.dueDate, note.dueTime) ?: return false
+
+        // A deadline with only a day is overdue once that day is over.
+        val end =
+            if (note.dueTime.isEmpty()) due.toLocalDate().plusDays(1).atStartOfDay() else due
+
+        return LocalDateTime.now().isAfter(end)
+    }
+
+    private val dueDayFormat =
+        DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())
 }

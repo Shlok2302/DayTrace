@@ -1,5 +1,8 @@
 package com.example.voicerecorder.summary
 
+import com.example.voicerecorder.DayTraceApplication
+import com.example.voicerecorder.reminders.AppNotifications
+import com.example.voicerecorder.reminders.Reminders
 import com.example.voicerecorder.settings.AppSettings
 import android.content.Context
 import android.content.Intent
@@ -72,14 +75,15 @@ class SummaryWorker(
 
                     val result =
                         GeminiSummarizer(applicationContext)
-                            .summarize(uri)
+                            .summarize(uri, store.recordedAt(uri))
 
                     Log.i(TAG, "Transcription received: ${result.transcript.length} characters")
 
                     Log.i(TAG, "Notes generated: ${result.notes.size} (${result.outcome})")
 
                     result.notes.forEach { note ->
-                        Log.i(TAG, "  ${note.category}: ${note.text}")
+                        val due = if (note.hasDue) " (due ${"${note.dueDate} ${note.dueTime}".trim()})" else ""
+                        Log.i(TAG, "  ${note.category}: ${note.text}$due")
                     }
 
                     // Progress for the record screen: Gemini is done, saving now.
@@ -102,6 +106,12 @@ class SummaryWorker(
             // Transcription succeeded and the result is saved, so the audio can go.
             val audioDeleted =
                 deleteAudio(uri)
+
+            // Reminders for Remember notes with a deadline. Never fails the job.
+            runCatching { Reminders.sync(applicationContext) }
+                .onFailure { Log.e(TAG, "Could not set the reminders", it) }
+
+            notify { AppNotifications.showNotesReady(applicationContext, result.notes) }
 
             // Two parallel lists: categories[i] belongs to notes[i].
             sendStatus(ACTION_SUMMARY_COMPLETE) {
@@ -148,7 +158,22 @@ class SummaryWorker(
                 putExtra(EXTRA_ERROR, errorMessage(e))
             }
 
+            notify { AppNotifications.showProcessingFailed(applicationContext, errorMessage(e)) }
+
             Result.failure()
+        }
+    }
+
+    /**
+     * A processing update, only when the user wants them (Settings >
+     * Notifications) and the app is not open: on the record screen the
+     * result is already shown.
+     */
+    private fun notify(
+        show: () -> Unit
+    ) {
+        if (AppSettings(applicationContext).processingUpdates && !DayTraceApplication.isInForeground) {
+            runCatching(show).onFailure { Log.e(TAG, "Could not show the notification", it) }
         }
     }
 

@@ -48,6 +48,13 @@ class SettingsFragment : SettingsPageFragment() {
             ),
 
             SettingsRow.Open(
+                icon = R.drawable.ic_trash,
+                title = getString(R.string.settings_recycle_bin),
+                subtitle = getString(R.string.settings_recycle_bin_subtitle),
+                onClick = { open(RecycleBinFragment()) }
+            ),
+
+            SettingsRow.Open(
                 icon = R.drawable.ic_palette,
                 title = getString(R.string.settings_appearance),
                 subtitle = getString(R.string.settings_appearance_subtitle),
@@ -58,7 +65,7 @@ class SettingsFragment : SettingsPageFragment() {
                 icon = R.drawable.ic_bell,
                 title = getString(R.string.settings_notifications),
                 subtitle = getString(R.string.settings_notifications_subtitle),
-                onClick = { showNotAvailable(R.string.settings_notifications) }
+                onClick = { open(NotificationSettingsFragment()) }
             ),
 
             SettingsRow.Open(
@@ -109,7 +116,7 @@ class SettingsFragment : SettingsPageFragment() {
             Notes.recordings(context)
 
         val notes =
-            recordings.sumOf { it.notes.size }
+            recordings.sumOf { it.activeNotes.size }
 
         val bytes =
             File(context.filesDir, "notes")
@@ -156,16 +163,6 @@ class SettingsFragment : SettingsPageFragment() {
                     Build.VERSION.RELEASE
                 )
             )
-            .setPositiveButton(R.string.close, null)
-            .show()
-    }
-
-    private fun showNotAvailable(
-        title: Int
-    ) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(title)
-            .setMessage(R.string.not_available_yet)
             .setPositiveButton(R.string.close, null)
             .show()
     }

@@ -16,6 +16,13 @@ import java.io.FileNotFoundException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Sends a saved recording to the Gemini API and returns its transcript
@@ -47,24 +54,39 @@ class GeminiSummarizer(
         get() = "$BASE_URL/v1beta/models/${settings.geminiModel}:generateContent"
 
     /**
-     * The prompt, plus any terms the user added in Settings.
+     * The prompt, plus when the recording was made (so Gemini can turn
+     * "tonight" or "by Friday" into a date) and any terms the user added
+     * in Settings.
      */
-    private fun prompt(): String {
+    private fun prompt(
+        recordedAt: LocalDateTime
+    ): String {
+
+        val prompt =
+            PROMPT + "\n\n" + RECORDING_TIME.format(recordedAt.format(RECORDING_TIME_FORMAT))
 
         val extra =
             settings.knownTerms
 
         if (extra.isEmpty()) {
-            return PROMPT
+            return prompt
         }
 
-        return PROMPT + "\n\nAlso use these exact spellings when a word sounds like one of them: " +
+        return prompt + "\n\nAlso use these exact spellings when a word sounds like one of them: " +
                 extra.joinToString(", ") + "."
     }
 
+    /**
+     * [recordedAt] is when the recording started (epoch millis). Deadlines
+     * such as "tonight at 8" are worked out from it.
+     */
     suspend fun summarize(
-        audioUri: Uri
+        audioUri: Uri,
+        recordedAt: Long
     ): RecordingNotes = withContext(Dispatchers.IO) {
+
+        val recordedTime =
+            Instant.ofEpochMilli(recordedAt).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
         if (BuildConfig.GEMINI_API_KEY.isBlank()) {
             throw GeminiException(
@@ -78,12 +100,12 @@ class GeminiSummarizer(
 
         val response =
             if (size <= INLINE_LIMIT_BYTES) {
-                generateInline(audioUri)
+                generateInline(audioUri, recordedTime)
             } else {
-                generateFromUpload(audioUri, size)
+                generateFromUpload(audioUri, size, recordedTime)
             }
 
-        parseNotes(response)
+        parseNotes(response, recordedTime)
     }
 
     private fun audioSize(
@@ -126,7 +148,8 @@ class GeminiSummarizer(
      * never has to sit in memory as one large string.
      */
     private fun generateInline(
-        audioUri: Uri
+        audioUri: Uri,
+        recordedAt: LocalDateTime
     ): JSONObject {
 
         val audioPart =
@@ -138,7 +161,7 @@ class GeminiSummarizer(
             )
 
         val (head, tail) =
-            requestBody(audioPart)
+            requestBody(audioPart, recordedAt)
                 .toString()
                 .split(AUDIO_PLACEHOLDER)
 
@@ -164,7 +187,8 @@ class GeminiSummarizer(
      */
     private suspend fun generateFromUpload(
         audioUri: Uri,
-        size: Long
+        size: Long,
+        recordedAt: LocalDateTime
     ): JSONObject {
 
         val file =
@@ -187,7 +211,7 @@ class GeminiSummarizer(
                 )
 
             val body =
-                requestBody(audioPart).toString()
+                requestBody(audioPart, recordedAt).toString()
 
             return json(generateUrl, "POST") {
                 writeJson(body)
@@ -270,14 +294,15 @@ class GeminiSummarizer(
     }
 
     private fun requestBody(
-        audioPart: JSONObject
+        audioPart: JSONObject,
+        recordedAt: LocalDateTime
     ): JSONObject {
 
         // Audio first, then the instructions (Google's recommended order).
         val parts =
             JSONArray()
                 .put(audioPart)
-                .put(JSONObject().put("text", prompt()))
+                .put(JSONObject().put("text", prompt(recordedAt)))
 
         return JSONObject()
             .put(
@@ -296,7 +321,8 @@ class GeminiSummarizer(
     }
 
     private fun parseNotes(
-        response: JSONObject
+        response: JSONObject,
+        recordedAt: LocalDateTime
     ): RecordingNotes {
 
         val candidate =
@@ -418,9 +444,60 @@ class GeminiSummarizer(
                     )
                 }
 
-                Note(category, noteText, title, tags)
+                val (dueDate, dueTime) =
+                    due(item, category, recordedAt)
+
+                Note(category, noteText, title, tags, dueDate, dueTime)
             }
         )
+    }
+
+    /**
+     * The deadline of a Remember note as ("YYYY-MM-DD", "HH:MM"), or
+     * ("", "") when it has none. A deadline Gemini got wrong is dropped
+     * instead of failing the whole recording: the note itself is fine.
+     */
+    private fun due(
+        item: JSONObject,
+        category: String,
+        recordedAt: LocalDateTime
+    ): Pair<String, String> {
+
+        // No words saying when means no deadline was said.
+        if (category != REMEMBER || item.optString("due_words").isBlank()) {
+            return "" to ""
+        }
+
+        val time =
+            runCatching { LocalTime.parse(item.optString("due_time").trim(), DUE_TIME_FORMAT) }
+                .getOrNull()
+
+        val date =
+            runCatching { LocalDate.parse(item.optString("due_date").trim()) }.getOrNull()
+                // A time with no day: today, or tomorrow if it had already passed.
+                ?: time?.let {
+                    if (it.isAfter(recordedAt.toLocalTime())) {
+                        recordedAt.toLocalDate()
+                    } else {
+                        recordedAt.toLocalDate().plusDays(1)
+                    }
+                }
+                ?: return "" to ""
+
+        // Gemini gives the named day; "before Friday" means it is due on Thursday.
+        val dueDate =
+            if (time == null && BEFORE.containsMatchIn(item.optString("due_words"))) {
+                date.minusDays(1)
+            } else {
+                date
+            }
+
+        // A deadline before the day of the recording cannot be right.
+        if (dueDate.isBefore(recordedAt.toLocalDate())) {
+            return "" to ""
+        }
+
+        return dueDate.toString() to (time?.format(DUE_TIME_FORMAT) ?: "")
     }
 
     private fun json(
@@ -541,6 +618,25 @@ class GeminiSummarizer(
         private const val MAX_TAGS =
             3
 
+        const val REMEMBER =
+            "Remember"
+
+        /*
+         * Added after the prompt so Gemini can turn "tonight at 8" into a
+         * date and time, e.g. "Monday, 21 September 2026 at 14:05".
+         */
+        private const val RECORDING_TIME =
+            "This recording was made on %s (local time). Work out due_date and due_time from it."
+
+        private val RECORDING_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", Locale.ENGLISH)
+
+        private val DUE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("HH:mm")
+
+        private val BEFORE =
+            Regex("""\bbefore\b""", RegexOption.IGNORE_CASE)
+
         /*
          * Every note gets exactly one of these.
          * The same list is sent to Gemini as the allowed values.
@@ -618,13 +714,20 @@ class GeminiSummarizer(
             4. Random Gossip: casual information about people or events that is worth keeping but is neither a task, an idea nor a personal reflection ("Aman got an internship at Zomato starting in January").
             Small talk that is not worth keeping gets no note at all.
 
-            STEP 6 - NO DUPLICATES
+            STEP 6 - DEADLINES (Remember notes only)
+            When a Remember note says WHEN it has to be done (a deadline, an appointment or a time), fill due_words, due_date and due_time. Leave all three empty for every other note.
+            - due_words: the exact words from the recording that say when, such as "tonight by 8 PM", "before Friday", "tomorrow morning" or "on the 5th". Empty when no day or time is said.
+            - due_date: the day as YYYY-MM-DD, worked out from due_words and the date of the recording (given at the end of these instructions). "today" and "tonight" are the day of the recording, "tomorrow" the day after it, and a weekday ("on Friday", "by Friday", "before Friday") the next such day. Always give the day that is NAMED, also after "before": for "before Friday" give the date of Friday itself.
+            - due_time: the time as 24-hour HH:MM, ONLY when due_words contain a clock time or a part of the day. Tell morning from evening by the words: "tonight at 8" and "by 8 PM" are 20:00, "8 in the morning" is 08:00. A part of the day with no clock time: "morning" 09:00, "afternoon" 14:00, "evening" or "this evening" 19:00, "tonight" 21:00. A time with no day is on the day of the recording, or the next day if that time had already passed.
+            If due_words name only a day ("by Friday", "tomorrow", "before Thursday"), due_time must be EMPTY. Never make up a time or a deadline that was not said.
+
+            STEP 7 - NO DUPLICATES
             Never create two notes with the same information; merge them when they are truly the same item. Keep independent actions as separate notes.
 
-            STEP 7 - CHECK
+            STEP 8 - CHECK
             Before answering, compare every note with the transcript. Each note must still contain every date, day, time, deadline, person, place, project name and purpose that belongs to it. If one deadline or date covers several notes, each of those notes must include it ("book the hall and send the invites by Thursday" gives "Book the hall by Thursday." and "Send the invites by Thursday."). Add anything missing.
 
-            STEP 8 - OUTPUT
+            STEP 9 - OUTPUT
             Return every note worth keeping, in the order it was said. If there is speech but nothing worth keeping, return no notes (the transcript is still saved). Do not explain your reasoning, do not describe the process, and do not summarize the recording as one paragraph.
             """.trimIndent()
 
@@ -637,6 +740,12 @@ class GeminiSummarizer(
          * consistent; the app does not use it.
          *
          * "enum" restricts Gemini's answer to exactly the allowed categories.
+         *
+         * "due_words" / "due_date" / "due_time" come after "category" on
+         * purpose: only Remember notes get a deadline, so the category is
+         * decided first. "due_words" (the exact words that say when) makes
+         * Gemini ground the deadline in what was said; a deadline without
+         * them is dropped, so it can never be invented.
          */
         private val RESPONSE_SCHEMA =
             """
@@ -660,10 +769,13 @@ class GeminiSummarizer(
                         "type": "ARRAY",
                         "items": { "type": "STRING" }
                       },
-                      "category": { "type": "STRING", "enum": ${JSONArray(CATEGORIES)} }
+                      "category": { "type": "STRING", "enum": ${JSONArray(CATEGORIES)} },
+                      "due_words": { "type": "STRING" },
+                      "due_date": { "type": "STRING" },
+                      "due_time": { "type": "STRING" }
                     },
-                    "required": ["note", "title", "tags", "category"],
-                    "propertyOrdering": ["note", "title", "tags", "category"]
+                    "required": ["note", "title", "tags", "category", "due_words", "due_date", "due_time"],
+                    "propertyOrdering": ["note", "title", "tags", "category", "due_words", "due_date", "due_time"]
                   }
                 }
               },
@@ -733,13 +845,31 @@ data class RecordingNotes(
  *
  * [title] and [tags] are for display; notes saved before they existed
  * fall back to [titleFrom] and an empty tag list.
+ *
+ * [dueDate] ("YYYY-MM-DD") and [dueTime] ("HH:MM", may be empty) are the
+ * deadline of a Remember note, used for its reminders.
+ *
+ * The rest is set by NoteStore: [id] identifies the note, [deletedAt]
+ * is when it went to the recycle bin (0 = not deleted) and [doneAt] is
+ * when the user marked it as done (it goes to the bin then too).
  */
 data class Note(
     val category: String,
     val text: String,
     val title: String = titleFrom(text),
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val dueDate: String = "",
+    val dueTime: String = "",
+    val id: String = "",
+    val deletedAt: Long = 0L,
+    val doneAt: Long = 0L
 ) {
+
+    val isDeleted: Boolean
+        get() = deletedAt > 0L
+
+    val hasDue: Boolean
+        get() = dueDate.isNotEmpty()
 
     companion object {
 

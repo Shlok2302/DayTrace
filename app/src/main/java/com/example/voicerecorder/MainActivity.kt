@@ -1,11 +1,19 @@
 package com.example.voicerecorder
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
+import com.example.voicerecorder.settings.AppSettings
 import com.example.voicerecorder.ui.HistoryFragment
+import com.example.voicerecorder.ui.NoteDetailFragment
 import com.example.voicerecorder.ui.RecordFragment
 import com.example.voicerecorder.ui.SettingsFragment
 import com.example.voicerecorder.ui.StatsFragment
@@ -21,6 +29,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
 
     private var currentTab: Int = 0
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -38,8 +49,66 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             showTab(R.id.nav_record)
+            handleNotificationTap(intent)
         } else {
             currentTab = savedInstanceState.getInt(KEY_TAB, R.id.nav_record)
+        }
+
+        askForNotificationsOnce()
+    }
+
+    override fun onNewIntent(
+        intent: Intent
+    ) {
+        super.onNewIntent(intent)
+        handleNotificationTap(intent)
+    }
+
+    /** A tapped reminder opens its note; a processing update opens History. */
+    private fun handleNotificationTap(
+        intent: Intent?
+    ) {
+
+        val noteId =
+            intent?.getStringExtra(EXTRA_OPEN_NOTE)
+
+        when {
+            noteId != null -> {
+                openHistory()
+                open(NoteDetailFragment.forNote(noteId))
+            }
+
+            intent?.hasExtra(EXTRA_OPEN_HISTORY) == true ->
+                openHistory()
+        }
+
+        intent?.removeExtra(EXTRA_OPEN_NOTE)
+        intent?.removeExtra(EXTRA_OPEN_HISTORY)
+    }
+
+    /**
+     * Reminders need the notification permission (Android 13+). It is
+     * asked for once; after that the user can turn it on from Settings >
+     * Notifications.
+     */
+    private fun askForNotificationsOnce() {
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return
+        }
+
+        val settings =
+            AppSettings(this)
+
+        val granted =
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+        if (!granted && !settings.notificationPermissionAsked) {
+            settings.notificationPermissionAsked = true
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -111,9 +180,17 @@ class MainActivity : AppCompatActivity() {
         bottomNav.selectedItemId = R.id.nav_settings
     }
 
-    private companion object {
+    companion object {
 
-        const val KEY_TAB =
+        private const val KEY_TAB =
             "tab"
+
+        /** Set on a reminder's tap intent: the id of the note to open. */
+        const val EXTRA_OPEN_NOTE =
+            "open_note"
+
+        /** Set on a processing update's tap intent. */
+        const val EXTRA_OPEN_HISTORY =
+            "open_history"
     }
 }
