@@ -94,9 +94,8 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
             entry.note.tags
         )
 
-        view.findViewById<TextView>(R.id.tvAudioStatus).setText(
-            if (audioExists) R.string.audio_kept_detail else R.string.audio_deleted_detail
-        )
+        view.findViewById<TextView>(R.id.tvAudioStatus).text =
+            audioStatus(entry.recording, audioExists)
 
         bindBin(view, entry)
         bindReminder(view, entry)
@@ -231,6 +230,39 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
         android.widget.Toast
             .makeText(requireContext(), R.string.copied, android.widget.Toast.LENGTH_SHORT)
             .show()
+    }
+
+    /**
+     * Where the audio is. An imported file was never touched (only
+     * DayTrace's copy is deleted); a restored note's audio stayed on the
+     * phone the backup came from.
+     */
+    private fun audioStatus(
+        recording: com.example.voicerecorder.summary.SavedRecording,
+        audioExists: Boolean
+    ): String {
+
+        val status =
+            when {
+                recording.importedFrom != null ->
+                    getString(R.string.audio_imported_detail, recording.importedFrom)
+                recording.audioUri.isEmpty() ->
+                    getString(R.string.audio_restored_detail)
+                audioExists ->
+                    getString(R.string.audio_kept_detail)
+                else ->
+                    getString(R.string.audio_deleted_detail)
+            }
+
+        // The time was not found in the file: say where it came from.
+        val time =
+            when (recording.recordedAtSource) {
+                com.example.voicerecorder.summary.NoteStore.SOURCE_FILE_DATE -> getString(R.string.recorded_at_file_date)
+                com.example.voicerecorder.summary.NoteStore.SOURCE_CHOSEN -> getString(R.string.recorded_at_chosen)
+                else -> null
+            }
+
+        return if (time == null) status else "$status\n\n$time"
     }
 
     /**

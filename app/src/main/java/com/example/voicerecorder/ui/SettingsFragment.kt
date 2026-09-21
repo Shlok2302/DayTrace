@@ -1,16 +1,10 @@
 package com.example.voicerecorder.ui
 
-import android.content.Context
 import android.os.Build
-import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.BuildConfig
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * The main Settings page.
@@ -44,7 +38,7 @@ class SettingsFragment : SettingsPageFragment() {
                 icon = R.drawable.ic_database,
                 title = getString(R.string.settings_storage),
                 subtitle = getString(R.string.settings_storage_subtitle),
-                onClick = { showStorage() }
+                onClick = { open(DataStorageFragment()) }
             ),
 
             SettingsRow.Open(
@@ -87,62 +81,6 @@ class SettingsFragment : SettingsPageFragment() {
         fragment: androidx.fragment.app.Fragment
     ) {
         (activity as? MainActivity)?.open(fragment)
-    }
-
-    /**
-     * Real numbers: how many notes are stored, how much space they take,
-     * and how many recordings are still on the device.
-     */
-    private fun showStorage() {
-
-        viewLifecycleOwner.lifecycleScope.launch {
-
-            val summary =
-                withContext(Dispatchers.IO) { storageSummary(requireContext()) }
-
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.settings_storage)
-                .setMessage(summary)
-                .setPositiveButton(R.string.close, null)
-                .show()
-        }
-    }
-
-    private fun storageSummary(
-        context: Context
-    ): String {
-
-        val recordings =
-            Notes.recordings(context)
-
-        val notes =
-            recordings.sumOf { it.activeNotes.size }
-
-        val bytes =
-            File(context.filesDir, "notes")
-                .listFiles()
-                ?.sumOf { it.length() }
-                ?: 0L
-
-        val keptAudio =
-            context.contentResolver
-                .query(
-                    android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    arrayOf(android.provider.MediaStore.MediaColumns._ID),
-                    "${android.provider.MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?",
-                    arrayOf(context.packageName),
-                    null
-                )
-                ?.use { it.count }
-                ?: 0
-
-        return getString(
-            R.string.storage_summary,
-            recordings.size,
-            notes,
-            bytes / 1024f,
-            keptAudio
-        )
     }
 
     private fun showPrivacy() {

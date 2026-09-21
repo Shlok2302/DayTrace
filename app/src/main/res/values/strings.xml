@@ -25,13 +25,14 @@
     <string name="record_view_in_history">View in History</string>
     <string name="record_try_again">Back to recorder</string>
     <string name="step_recording_stopped">Recording stopped</string>
+    <string name="step_audio_imported">Audio imported</string>
     <string name="step_converting">Converting to MP3</string>
     <string name="step_analyzing">Analyzing with Gemini</string>
     <string name="step_summary">Generating summary</string>
     <string name="step_saving">Saving to DayTrace</string>
     <string name="label_category">Category</string>
     <string name="label_summary">Summary</string>
-    <string name="label_saved_on">Saved on</string>
+    <string name="label_saved_on">Recorded on</string>
     <string name="label_original_audio">Original Audio</string>
 
     <string name="microphone_required">Microphone permission is required</string>
@@ -62,6 +63,10 @@
     <string name="audio_deleted_footer">Audio files are automatically deleted after successful processing.</string>
     <string name="audio_deleted_detail">Audio file has been deleted after successful processing.</string>
     <string name="audio_kept_detail">Audio file is still on this device.</string>
+    <string name="audio_imported_detail">Imported from %1$s. DayTrace worked on a copy and deleted it after processing; your original file was not changed.</string>
+    <string name="audio_restored_detail">Restored from a DayTrace backup. The audio was deleted after processing on the phone the backup came from.</string>
+    <string name="recorded_at_file_date">The recording time is the file\'s date, confirmed when importing.</string>
+    <string name="recorded_at_chosen">The recording time was chosen when importing.</string>
     <string name="no_recordings_day">No recordings on this day.</string>
     <string name="no_recordings_yet">Your recordings will appear here once you record something.</string>
 
@@ -82,8 +87,8 @@
     <string name="settings_ai">AI &amp; Processing</string>
     <string name="settings_ai_subtitle">Processing preferences and AI settings</string>
     <string name="settings_ai_page_subtitle">Configure how your recordings are analyzed.</string>
-    <string name="settings_storage">Storage &amp; Data</string>
-    <string name="settings_storage_subtitle">Manage your notes and data</string>
+    <string name="settings_storage">Data &amp; Storage</string>
+    <string name="settings_storage_subtitle">Storage, export and import</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_appearance_subtitle">Theme and visual preferences</string>
     <string name="settings_appearance_page_subtitle">How DayTrace looks.</string>
@@ -223,6 +228,72 @@
     <string name="value_not_allowed">Not allowed</string>
     <string name="processing_updates">Processing updates</string>
     <string name="processing_updates_subtitle">Tell you when a recording is turned into notes while the app is closed.</string>
+
+    <!-- Import audio -->
+    <string name="import_audio">Import audio file</string>
+    <string name="import_audio_title">Import audio</string>
+    <string name="import_action">Import</string>
+    <string name="import_change_time">Change time</string>
+    <string name="import_when_title">When was this recorded?</string>
+    <string name="import_use_file_date">Use this time</string>
+    <string name="import_pick_time">Pick date &amp; time</string>
+    <string name="import_recorded_known">%1$s\n\nRecorded on %2$s (%3$s).\n\nIts notes will be filed under that date.</string>
+    <string name="import_source_details">from the file\'s recording details</string>
+    <string name="import_source_name">from the file name</string>
+    <string name="import_recorded_file_date">DayTrace couldn\'t find when %1$s was recorded.\n\nThe file was last changed on %2$s. That is often when it was recorded, but not if it was copied, downloaded or edited later.</string>
+    <string name="import_recorded_unknown">DayTrace couldn\'t find when %1$s was recorded. Pick the date and time it was recorded, so its notes are filed under the right day.</string>
+    <string name="import_time_in_future">The recording time can\'t be in the future.</string>
+    <string name="import_unreadable">DayTrace couldn\'t open that file.</string>
+    <string name="import_again_title">Already imported</string>
+    <string name="import_again_message">%1$s was already imported on %2$s. Importing it again adds its notes a second time.</string>
+    <string name="import_again">Import again</string>
+    <string name="update_import_failed_title">Couldn\'t import your audio</string>
+    <string name="update_import_failed_text">%1$s Your file was not changed.</string>
+
+    <!-- Settings > Data & Storage -->
+    <string name="data_storage_subtitle">Your notes stay on this phone. Export them before uninstalling DayTrace, and import them after reinstalling.</string>
+    <string name="storage_used">Storage used</string>
+    <string name="storage_used_subtitle">Notes and recordings on this phone</string>
+    <string name="export_data">Export DayTrace Data</string>
+    <string name="export_data_subtitle">Save or share your notes</string>
+    <string name="export_share_text">Share as text (Samsung Notes, Keep…)</string>
+    <string name="export_save_text">Save as text file (.txt)</string>
+    <string name="export_save_backup">Save backup file (.daytrace)</string>
+    <string name="export_text_subject">DayTrace notes</string>
+    <string name="export_text_saved">Notes saved as a text file</string>
+    <string name="export_backup_saved">Backup saved. Keep it somewhere safe, such as Google Drive.</string>
+    <string name="export_failed">Couldn\'t save the file. Nothing was changed.</string>
+    <string name="import_data">Import DayTrace Data</string>
+    <string name="import_data_subtitle">Restore notes from a .daytrace backup</string>
+    <string name="import_data_invalid_title">Can\'t restore this file</string>
+    <string name="import_data_unreadable">DayTrace couldn\'t read this file. Nothing was changed.</string>
+    <string name="import_data_summary">Backup from %1$s\n%2$s, %3$s.\n%4$d of them are already on this phone.</string>
+    <plurals name="backup_recordings">
+        <item quantity="one">%d recording</item>
+        <item quantity="other">%d recordings</item>
+    </plurals>
+    <plurals name="backup_notes">
+        <item quantity="one">%d note</item>
+        <item quantity="other">%d notes</item>
+    </plurals>
+    <plurals name="import_data_add_hint">
+        <item quantity="one">Add to my notes: keeps everything on this phone and adds the note that is missing.</item>
+        <item quantity="other">Add to my notes: keeps everything on this phone and adds the %d notes that are missing.</item>
+    </plurals>
+    <string name="import_data_nothing_new">Everything in this backup is already on this phone.</string>
+    <string name="import_data_add">Add to my notes</string>
+    <string name="import_data_replace">Replace my notes</string>
+    <string name="import_data_replace_title">Replace your notes?</string>
+    <string name="import_data_replace_message">This deletes the %1$d notes on this phone (including the recycle bin) and restores the %2$d notes in the backup. It can\'t be undone.</string>
+    <plurals name="import_data_restored">
+        <item quantity="one">Restored %d note.</item>
+        <item quantity="other">Restored %d notes.</item>
+    </plurals>
+    <plurals name="import_data_already">
+        <item quantity="one">%d was already on this phone and was not added again.</item>
+        <item quantity="other">%d were already on this phone and were not added again.</item>
+    </plurals>
+    <string name="import_data_failed">The backup couldn\'t be restored completely. Try importing it again; notes that are already here are not added twice.</string>
 
     <string name="about_details">DayTrace %1$s\nAndroid %2$s\n\nRecord a thought, and it becomes short notes you can find later.</string>
 

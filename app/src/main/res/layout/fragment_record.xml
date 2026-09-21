@@ -132,6 +132,23 @@
 
                 </LinearLayout>
 
+                <!-- Import audio: an audio file from the phone goes through the same pipeline -->
+                <TextView
+                    android:id="@+id/btnImport"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="16dp"
+                    android:drawablePadding="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:text="@string/import_audio"
+                    android:textColor="@color/forest"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_import"
+                    app:drawableTint="@color/forest" />
+
                 <Space
                     android:layout_width="match_parent"
                     android:layout_height="0dp"

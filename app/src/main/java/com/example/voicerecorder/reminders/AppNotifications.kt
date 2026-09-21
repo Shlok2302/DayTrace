@@ -219,6 +219,24 @@ object AppNotifications {
     }
 
     @SuppressLint("MissingPermission")
+    fun showImportFailed(
+        context: Context,
+        reason: String
+    ) {
+
+        if (!canPost(context)) {
+            return
+        }
+
+        post(
+            context,
+            context.getString(R.string.update_import_failed_title),
+            context.getString(R.string.update_import_failed_text, reason),
+            openApp(context, MainActivity.EXTRA_OPEN_RECORDER, "1")
+        )
+    }
+
+    @SuppressLint("MissingPermission")
     private fun post(
         context: Context,
         title: String,

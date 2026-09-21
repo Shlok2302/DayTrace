@@ -1,15 +1,19 @@
 package com.example.voicerecorder.ui
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
@@ -24,11 +28,18 @@ import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.example.voicerecorder.service.RecordingService
 import com.example.voicerecorder.settings.AppSettings
+import com.example.voicerecorder.summary.AudioImport
+import com.example.voicerecorder.summary.ImportWorker
+import com.example.voicerecorder.summary.NoteStore
 import com.example.voicerecorder.summary.SavedRecording
 import com.example.voicerecorder.summary.SummaryWorker
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Locale
 
 /**
@@ -81,6 +92,12 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
             }
         }
 
+    /** Import audio: any audio file; FFmpeg converts it like a recording. */
+    private val audioPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) onAudioPicked(uri)
+        }
+
     private val receiver =
         object : BroadcastReceiver() {
             override fun onReceive(
@@ -123,13 +140,14 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         view.findViewById<View>(R.id.btnStart).setOnClickListener { onStartClicked() }
         view.findViewById<View>(R.id.btnStop).setOnClickListener { stopRecording() }
+        view.findViewById<View>(R.id.btnImport).setOnClickListener { audioPicker.launch(arrayOf("audio/*")) }
 
         btnDone.setOnClickListener {
             if (State.stage == Stage.FAILED) {
                 State.reset()
                 render()
             } else {
-                (activity as? MainActivity)?.openHistory()
+                (activity as? MainActivity)?.openHistory(State.recording?.let { Notes.dateOf(it.recordedAt) })
             }
         }
 
@@ -148,6 +166,9 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
                 addAction(SummaryWorker.ACTION_SUMMARY_SAVING)
                 addAction(SummaryWorker.ACTION_SUMMARY_COMPLETE)
                 addAction(SummaryWorker.ACTION_SUMMARY_FAILED)
+                addAction(ImportWorker.ACTION_IMPORT_STARTED)
+                addAction(ImportWorker.ACTION_IMPORT_READY)
+                addAction(ImportWorker.ACTION_IMPORT_FAILED)
             }
 
         ContextCompat.registerReceiver(
@@ -174,6 +195,15 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         State.message = getString(R.string.record_failed_recording)
         State.touch()
         render()
+    }
+
+    override fun onDestroyView() {
+        // "All Done!" has been seen once the user leaves the Record tab; next time
+        // it opens on START again (a rotation or theme change keeps it).
+        if (State.stage == Stage.DONE && !requireActivity().isChangingConfigurations) {
+            State.reset()
+        }
+        super.onDestroyView()
     }
 
     override fun onStop() {
@@ -208,6 +238,7 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         ContextCompat.startForegroundService(requireContext(), intent)
 
         State.stage = Stage.RECORDING
+        State.imported = false
         State.startedAt = SystemClock.elapsedRealtime()
         State.touch()
 
@@ -232,6 +263,159 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         State.touch()
 
         render()
+    }
+
+    // Importing an audio file -------------------------------------------
+
+    private fun onAudioPicked(
+        uri: Uri
+    ) {
+
+        val context =
+            requireContext().applicationContext
+
+        viewLifecycleOwner.lifecycleScope.launch {
+
+            val picked =
+                withContext(Dispatchers.IO) { runCatching { AudioImport.inspect(context, uri) }.getOrNull() }
+
+            if (picked == null) {
+                Toast.makeText(context, R.string.import_unreadable, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+
+            val earlier =
+                withContext(Dispatchers.IO) { AudioImport.alreadyImported(context, picked) }
+
+            if (earlier == null) {
+                confirmRecordingTime(picked)
+            } else {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.import_again_title)
+                    .setMessage(getString(R.string.import_again_message, picked.name, Notes.formatDateTime(earlier.processedAt)))
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.import_again) { _, _ -> confirmRecordingTime(picked) }
+                    .show()
+            }
+        }
+    }
+
+    /**
+     * The notes will belong to when the audio was recorded, so that time is
+     * always shown before importing. When the file does not say, the user
+     * confirms the file's date or picks one: it is never silently "now".
+     */
+    private fun confirmRecordingTime(
+        picked: AudioImport.Picked
+    ) {
+
+        val known =
+            picked.recordedAt
+
+        val lastModified =
+            picked.lastModified
+
+        val dialog =
+            MaterialAlertDialogBuilder(requireContext())
+                .setNegativeButton(R.string.cancel, null)
+
+        when {
+            known != null -> {
+                val from =
+                    getString(
+                        if (picked.recordedAtSource == NoteStore.SOURCE_AUDIO_DETAILS) {
+                            R.string.import_source_details
+                        } else {
+                            R.string.import_source_name
+                        }
+                    )
+                dialog
+                    .setTitle(R.string.import_audio_title)
+                    .setMessage(getString(R.string.import_recorded_known, picked.name, Notes.formatDateTime(known), from))
+                    .setPositiveButton(R.string.import_action) { _, _ ->
+                        startImport(picked, known, picked.recordedAtSource ?: NoteStore.SOURCE_FILE_NAME)
+                    }
+                    .setNeutralButton(R.string.import_change_time) { _, _ -> pickRecordingTime(picked, known) }
+            }
+
+            lastModified != null ->
+                dialog
+                    .setTitle(R.string.import_when_title)
+                    .setMessage(getString(R.string.import_recorded_file_date, picked.name, Notes.formatDateTime(lastModified)))
+                    .setPositiveButton(R.string.import_use_file_date) { _, _ ->
+                        startImport(picked, lastModified, NoteStore.SOURCE_FILE_DATE)
+                    }
+                    .setNeutralButton(R.string.import_pick_time) { _, _ -> pickRecordingTime(picked, lastModified) }
+
+            else ->
+                dialog
+                    .setTitle(R.string.import_when_title)
+                    .setMessage(getString(R.string.import_recorded_unknown, picked.name))
+                    .setPositiveButton(R.string.import_pick_time) { _, _ -> pickRecordingTime(picked, null) }
+        }
+
+        dialog.show()
+    }
+
+    private fun pickRecordingTime(
+        picked: AudioImport.Picked,
+        initial: Long?
+    ) {
+
+        val start =
+            Instant.ofEpochMilli(initial ?: System.currentTimeMillis()).atZone(ZoneId.systemDefault())
+
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, day ->
+                TimePickerDialog(
+                    requireContext(),
+                    { _, hour, minute ->
+                        val chosen =
+                            LocalDateTime.of(year, month + 1, day, hour, minute)
+                                .atZone(ZoneId.systemDefault())
+                                .toInstant()
+                                .toEpochMilli()
+                        if (chosen > System.currentTimeMillis()) {
+                            Toast.makeText(requireContext(), R.string.import_time_in_future, Toast.LENGTH_LONG).show()
+                        } else {
+                            startImport(picked, chosen, NoteStore.SOURCE_CHOSEN)
+                        }
+                    },
+                    start.hour,
+                    start.minute,
+                    DateFormat.is24HourFormat(requireContext())
+                ).show()
+            },
+            start.year,
+            start.monthValue - 1,
+            start.dayOfMonth
+        ).apply { datePicker.maxDate = System.currentTimeMillis() }.show()
+    }
+
+    private fun startImport(
+        picked: AudioImport.Picked,
+        recordedAt: Long,
+        source: String
+    ) {
+
+        // Not while something is being recorded or processed.
+        if (State.stage !in setOf(Stage.IDLE, Stage.DONE, Stage.FAILED)) {
+            return
+        }
+
+        val context =
+            requireContext().applicationContext
+
+        State.reset()
+        State.stage = Stage.CONVERTING
+        State.imported = true
+        State.touch()
+        render()
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            AudioImport.start(context, picked, recordedAt, source)
+        }
     }
 
     // Pipeline events ----------------------------------------------------
@@ -267,6 +451,19 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
             }
 
             SummaryWorker.ACTION_SUMMARY_FAILED -> {
+                State.stage = Stage.FAILED
+                State.message = intent.getStringExtra(SummaryWorker.EXTRA_ERROR)
+            }
+
+            ImportWorker.ACTION_IMPORT_STARTED -> {
+                State.stage = Stage.CONVERTING
+                State.imported = true
+            }
+
+            ImportWorker.ACTION_IMPORT_READY ->
+                State.stage = Stage.ANALYZING
+
+            ImportWorker.ACTION_IMPORT_FAILED -> {
                 State.stage = Stage.FAILED
                 State.message = intent.getStringExtra(SummaryWorker.EXTRA_ERROR)
             }
@@ -395,6 +592,11 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
 
         tvProgressTitle.text = title
         tvProgressSubtitle.text = subtitle
+
+        // An imported file was never "recorded" here.
+        steps.getChildAt(0)?.findViewById<TextView>(R.id.tvStep)?.setText(
+            if (State.imported) R.string.step_audio_imported else R.string.step_recording_stopped
+        )
         tvProgressHint.isVisible = State.stage == Stage.CONVERTING
         imgProgress.setImageResource(icon)
 
@@ -498,8 +700,12 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
             updatedAt = SystemClock.elapsedRealtime()
         }
 
+        /** The audio came from Import audio, not from the microphone. */
+        var imported: Boolean = false
+
         fun reset() {
             stage = Stage.IDLE
+            imported = false
             audioUri = null
             message = null
             recording = null

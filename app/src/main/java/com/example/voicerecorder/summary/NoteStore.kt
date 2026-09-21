@@ -2,6 +2,7 @@ package com.example.voicerecorder.summary
 
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,6 +53,21 @@ class NoteStore(
             val name =
                 fileName(displayName(audioUri) ?: "recording_${audioUri.lastPathSegment}")
 
+            // An imported file: when it was really recorded, and where it came from.
+            val importInfo =
+                readJson(importFile(name))
+
+            // When the audio was RECORDED (never when it was processed).
+            val (recordedAt, recordedAtSource) =
+                when {
+                    importInfo != null ->
+                        millis(importInfo.optString("recorded_at")) to importInfo.optString("recorded_at_source")
+                    timeFromName(name) != null ->
+                        timeFromName(name)!! to SOURCE_RECORDING
+                    else ->
+                        (addedTime(audioUri) ?: 0L) to SOURCE_ADDED
+                }
+
             val json =
                 JSONObject()
                     .put("recording", name)
@@ -75,7 +91,28 @@ class NoteStore(
                         )
                     )
 
-            return synchronized(LOCK) { write(name, json) }
+            if (recordedAt > 0) {
+                json.put("recorded_at", Instant.ofEpochMilli(recordedAt).toString())
+                json.put("recorded_at_source", recordedAtSource)
+            }
+
+            if (importInfo != null) {
+                json.put(
+                    "import",
+                    JSONObject()
+                        .put("original_file", importInfo.optString("original_file"))
+                        .put("original_size", importInfo.optLong("original_size"))
+                        .put("imported_at", importInfo.optString("imported_at"))
+                )
+            }
+
+            val file =
+                synchronized(LOCK) { write(name, json) }
+
+            // Only once the result is safely written.
+            importFile(name).delete()
+
+            return file
 
         } catch (e: Exception) {
             throw StorageException("Could not save the notes on this device", e)
@@ -119,6 +156,165 @@ class NoteStore(
             .getOrNull()
             ?.let(::timeFromName)
             ?: System.currentTimeMillis()
+
+    // Imported audio --------------------------------------------------------
+
+    /**
+     * Remembers, for an imported audio file about to be processed, when it
+     * was really recorded and what the original file was. [save] adds this
+     * to the result, so the notes carry the original recording time.
+     */
+    fun saveImportInfo(
+        recording: String,
+        originalFile: String,
+        originalSize: Long,
+        recordedAt: Long,
+        recordedAtSource: String
+    ) {
+
+        val file =
+            importFile(recording)
+
+        file.parentFile?.mkdirs()
+
+        file.writeText(
+            JSONObject()
+                .put("original_file", originalFile)
+                .put("original_size", originalSize)
+                .put("recorded_at", Instant.ofEpochMilli(recordedAt).toString())
+                .put("recorded_at_source", recordedAtSource)
+                .put("imported_at", Instant.now().toString())
+                .toString(2)
+        )
+    }
+
+    /** Forgets an import that failed before anything was saved. */
+    fun clearImportInfo(
+        recording: String
+    ) {
+        importFile(recording).delete()
+    }
+
+    /** True if a recording (or a pending import) already uses this name. */
+    fun nameInUse(
+        recording: String
+    ): Boolean =
+        File(directory, "$recording.json").exists() || importFile(recording).exists()
+
+    private fun importFile(
+        recording: String
+    ): File =
+        File(context.filesDir, "$IMPORTS_DIRECTORY/$recording.json")
+
+    // Backup and restore ----------------------------------------------------
+
+    /**
+     * Every saved recording as written in its file, with the note ids and
+     * the recording time filled in, for a .daytrace backup. Read only.
+     */
+    fun exportRecordings(): List<JSONObject> =
+        directory
+            .listFiles { file -> file.extension == "json" }
+            ?.sortedBy { it.name }
+            ?.mapNotNull { file ->
+                val json = readJson(file) ?: return@mapNotNull null
+                val saved = toSavedRecording(json) ?: return@mapNotNull null
+                val notes = json.optJSONArray("notes") ?: JSONArray()
+                for (index in 0 until notes.length()) {
+                    val note = notes.getJSONObject(index)
+                    if (note.optString("id").isEmpty()) {
+                        note.put("id", legacyId(saved.name, index))
+                    }
+                }
+                if (json.optString("recorded_at").isEmpty()) {
+                    json.put("recorded_at", Instant.ofEpochMilli(saved.recordedAt).toString())
+                }
+                json
+            }
+            .orEmpty()
+
+    /** The ids of every note on this device, including the recycle bin. */
+    fun noteIds(): Set<String> =
+        loadAll().flatMap { recording -> recording.notes.map { it.id } }.toSet()
+
+    /**
+     * Adds a recording from a backup. A recording that is not on this
+     * device is written as it is; one that is gets only the notes it does
+     * not have yet (matched by note id), so importing the same backup
+     * again adds nothing. Returns the number of notes added.
+     */
+    fun restoreRecording(
+        backup: JSONObject
+    ): Int {
+
+        val name =
+            backup.getString("recording")
+
+        synchronized(LOCK) {
+
+            directory.mkdirs()
+
+            val local =
+                readJson(File(directory, "$name.json"))
+
+            if (local == null) {
+                write(name, backup)
+                return backup.getJSONArray("notes").length()
+            }
+
+            val localNotes =
+                local.optJSONArray("notes") ?: JSONArray().also { local.put("notes", it) }
+
+            val localIds =
+                (0 until localNotes.length()).map { index ->
+                    localNotes.getJSONObject(index).optString("id").ifEmpty { legacyId(name, index) }
+                }.toSet()
+
+            // Keep the local ids fixed before adding anything.
+            for (index in 0 until localNotes.length()) {
+                val note = localNotes.getJSONObject(index)
+                if (note.optString("id").isEmpty()) note.put("id", legacyId(name, index))
+            }
+
+            val backupNotes =
+                backup.getJSONArray("notes")
+
+            var added = 0
+
+            for (index in 0 until backupNotes.length()) {
+                val note = backupNotes.getJSONObject(index)
+                if (note.getString("id") !in localIds) {
+                    localNotes.put(note)
+                    added++
+                }
+            }
+
+            // Nothing new: the file on this device is left exactly as it is.
+            if (added == 0) {
+                return 0
+            }
+
+            if (local.optString("recorded_at").isEmpty() && backup.has("recorded_at")) {
+                local.put("recorded_at", backup.getString("recorded_at"))
+                local.put("recorded_at_source", backup.optString("recorded_at_source"))
+            }
+
+            write(name, local)
+
+            return added
+        }
+    }
+
+    /**
+     * Deletes every saved recording on this device, for "Replace my notes"
+     * when restoring a backup. Returns the ids of the notes that were removed.
+     */
+    fun deleteAllRecordings(): List<String> =
+        synchronized(LOCK) {
+            val ids = noteIds().toList()
+            directory.listFiles { file -> file.extension == "json" }?.forEach { it.delete() }
+            ids
+        }
 
     // Recycle bin -----------------------------------------------------------
 
@@ -430,14 +626,24 @@ class NoteStore(
                 runCatching { Instant.parse(json.getString("processed_at")).toEpochMilli() }
                     .getOrDefault(0L)
 
+            val import =
+                json.optJSONObject("import")
+
             SavedRecording(
                 name = name,
                 audioUri = json.optString("audio_uri"),
-                recordedAt = timeFromName(name) ?: processedAt,
+                // The stored recording time; older results only have it in the name.
+                recordedAt = millis(json.optString("recorded_at")).takeIf { it > 0 }
+                    ?: timeFromName(name)
+                    ?: processedAt,
                 processedAt = processedAt,
                 outcome = json.optString("outcome", RecordingNotes.OUTCOME_NOTES),
                 transcript = json.optString("transcript"),
-                notes = toNotes(json)
+                notes = toNotes(json),
+                recordedAtSource = json.optString("recorded_at_source")
+                    .ifEmpty { if (timeFromName(name) != null) SOURCE_RECORDING else "" },
+                importedFrom = import?.optString("original_file")?.ifEmpty { null },
+                importedSize = import?.optLong("original_size") ?: 0L
             )
         }.getOrNull()
 
@@ -454,6 +660,16 @@ class NoteStore(
             ?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0) else null
             }
+
+    /** When MediaStore added the audio file, or null. */
+    private fun addedTime(
+        audioUri: Uri
+    ): Long? =
+        runCatching {
+            context.contentResolver
+                .query(audioUri, arrayOf(MediaStore.MediaColumns.DATE_ADDED), null, null, null)
+                ?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) * 1000L else null }
+        }.getOrNull()?.takeIf { it > 0 }
 
     /** "Voice_Recording_1789817319403" holds the time the recording started. */
     private fun timeFromName(
@@ -489,6 +705,27 @@ class NoteStore(
 
         private const val FAILED_DIRECTORY =
             "failed"
+
+        private const val IMPORTS_DIRECTORY =
+            "imports"
+
+        /*
+         * Where a recording's time came from ("recorded_at_source").
+         * All of them mean "when the audio was recorded", never "when it
+         * was processed".
+         */
+        const val SOURCE_RECORDING = "recording"         // DayTrace's own recording
+        const val SOURCE_AUDIO_DETAILS = "audio_details" // date stored inside an imported file
+        const val SOURCE_FILE_NAME = "file_name"         // date and time in the file's name
+        const val SOURCE_FILE_DATE = "file_date"         // file's last change, confirmed by the user
+        const val SOURCE_CHOSEN = "chosen"               // picked by the user when importing
+        const val SOURCE_ADDED = "added"                 // when the audio file was created
+
+        /** A name that is safe as a file name ("Voice_Recording_123"). */
+        fun isSafeName(
+            name: String
+        ): Boolean =
+            name.isNotEmpty() && !name.startsWith(".") && name.matches(Regex("[A-Za-z0-9._-]+"))
 
         /** Notes stay in the recycle bin this long before they are deleted for good. */
         const val BIN_DAYS =
@@ -538,7 +775,12 @@ data class SavedRecording(
     val processedAt: Long,
     val outcome: String,
     val transcript: String,
-    val notes: List<Note>
+    val notes: List<Note>,
+    /** Where [recordedAt] came from (NoteStore.SOURCE_*); empty for old results. */
+    val recordedAtSource: String = "",
+    /** The original file's name, for an imported audio file. */
+    val importedFrom: String? = null,
+    val importedSize: Long = 0L
 ) {
 
     /** The notes that are not in the recycle bin. */
