@@ -12,7 +12,6 @@ import com.example.voicerecorder.R
 import com.example.voicerecorder.reminders.AppNotifications
 import com.example.voicerecorder.reminders.Reminders
 import com.example.voicerecorder.settings.AppSettings
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlin.concurrent.thread
 
 /**
@@ -124,17 +123,19 @@ class NotificationSettingsFragment : SettingsPageFragment() {
         val choices =
             AppSettings.EARLY_REMINDER_CHOICES
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.early_reminder)
-            .setSingleChoiceItems(
-                choices.map { earlyLabel(it) }.toTypedArray(),
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_bell)
+            .title(R.string.early_reminder)
+            .message(R.string.early_reminder_subtitle)
+            .choices(
+                choices.map { DayTraceDialog.Choice(earlyLabel(it)) },
                 choices.indexOf(settings.earlyReminderMinutes)
-            ) { dialog, index ->
+            ) { index ->
                 settings.earlyReminderMinutes = choices[index]
                 syncReminders()
                 renderRows()
-                dialog.dismiss()
             }
+            .secondary(R.string.cancel)
             .show()
     }
 

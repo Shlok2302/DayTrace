@@ -94,6 +94,9 @@
     <string name="settings_appearance_page_subtitle">How DayTrace looks.</string>
     <string name="theme">Theme</string>
     <string name="theme_subtitle">Light, dark, or follow the phone</string>
+    <string name="theme_system_detail">Match the phone\'s light or dark mode</string>
+    <string name="theme_light_detail">Warm cream with green leaves</string>
+    <string name="theme_dark_detail">Deep green, easy on the eyes at night</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_subtitle">Alerts and updates</string>
     <string name="settings_privacy">Privacy</string>
@@ -105,6 +108,7 @@
     <string name="recording_quality">Recording Quality</string>
     <string name="recording_quality_subtitle">Higher quality gives better results but uses more storage.</string>
     <string name="quality_option">%1$s (%2$d kbps)</string>
+    <string name="quality_detail">%1$d kbps · %2$.1f kHz</string>
     <string name="auto_process">Auto-process recordings</string>
     <string name="auto_process_subtitle">Automatically start processing after you stop recording.</string>
     <string name="show_duration">Show recording duration</string>
@@ -246,6 +250,8 @@
     <string name="import_source_name">from the file name</string>
     <string name="import_recorded_file_date">DayTrace couldn\'t find when %1$s was recorded.\n\nThe file was last changed on %2$s. That is often when it was recorded, but not if it was copied, downloaded or edited later.</string>
     <string name="import_recorded_unknown">DayTrace couldn\'t find when %1$s was recorded. Pick the date and time it was recorded, so its notes are filed under the right day.</string>
+    <string name="import_pick_date_title">When was it recorded?</string>
+    <string name="import_pick_time_title">At what time?</string>
     <string name="import_time_in_future">The recording time can\'t be in the future.</string>
     <string name="import_unreadable">DayTrace couldn\'t open that file.</string>
     <string name="import_again_title">Already imported</string>
@@ -260,9 +266,13 @@
     <string name="storage_used_subtitle">Notes and recordings on this phone</string>
     <string name="export_data">Export DayTrace Data</string>
     <string name="export_data_subtitle">Save or share your notes</string>
-    <string name="export_share_text">Share as text (Samsung Notes, Keep…)</string>
-    <string name="export_save_text">Save as text file (.txt)</string>
-    <string name="export_save_backup">Save backup file (.daytrace)</string>
+    <string name="export_share_text">Share as text</string>
+    <string name="export_share_text_detail">To Samsung Notes, Google Keep, messages…</string>
+    <string name="export_save_text">Save as text file</string>
+    <string name="export_save_text_detail">A .txt file you can open anywhere</string>
+    <string name="export_save_backup">Save backup file</string>
+    <string name="export_save_backup_detail">A .daytrace file to restore your notes later</string>
+    <string name="export_data_message">Exporting only makes a copy. Your notes stay on this phone.</string>
     <string name="export_text_subject">DayTrace notes</string>
     <string name="export_text_saved">Notes saved as a text file</string>
     <string name="export_backup_saved">Backup saved. Keep it somewhere safe, such as Google Drive.</string>

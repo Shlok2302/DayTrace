@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.R
 import com.example.voicerecorder.summary.DayTraceBackup
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,22 +79,24 @@ class DataStorageFragment : SettingsPageFragment() {
         val today =
             LocalDate.now().toString()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.export_data)
-            .setItems(
-                arrayOf(
-                    getString(R.string.export_share_text),
-                    getString(R.string.export_save_text),
-                    getString(R.string.export_save_backup)
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_export)
+            .title(R.string.export_data)
+            .message(R.string.export_data_message)
+            .choices(
+                listOf(
+                    DayTraceDialog.Choice(getString(R.string.export_share_text), getString(R.string.export_share_text_detail), R.drawable.ic_chat),
+                    DayTraceDialog.Choice(getString(R.string.export_save_text), getString(R.string.export_save_text_detail), R.drawable.ic_document),
+                    DayTraceDialog.Choice(getString(R.string.export_save_backup), getString(R.string.export_save_backup_detail), R.drawable.ic_database)
                 )
-            ) { _, which ->
+            ) { which ->
                 when (which) {
                     0 -> shareText()
                     1 -> saveText.launch("DayTrace notes $today.txt")
                     2 -> saveBackup.launch("DayTrace backup $today.daytrace")
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
+            .secondary(R.string.cancel)
             .show()
     }
 

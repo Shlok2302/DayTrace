@@ -3,7 +3,6 @@ package com.example.voicerecorder.ui
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.example.voicerecorder.settings.AppSettings
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Settings > AI & Processing.
@@ -64,16 +63,18 @@ class AiSettingsFragment : SettingsPageFragment() {
         val ids =
             AppSettings.MODELS.keys.toList()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.gemini_model)
-            .setSingleChoiceItems(
-                AppSettings.MODELS.values.toTypedArray(),
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_sparkle)
+            .title(R.string.gemini_model)
+            .message(R.string.gemini_model_subtitle)
+            .choices(
+                AppSettings.MODELS.map { (id, name) -> DayTraceDialog.Choice(name, id) },
                 ids.indexOf(settings.geminiModel).coerceAtLeast(0)
-            ) { dialog, index ->
+            ) { index ->
                 settings.geminiModel = ids[index]
                 renderRows()
-                dialog.dismiss()
             }
+            .secondary(R.string.cancel)
             .show()
     }
 
@@ -82,16 +83,18 @@ class AiSettingsFragment : SettingsPageFragment() {
         val choices =
             AppSettings.MINIMUM_SECONDS_CHOICES
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.minimum_duration)
-            .setSingleChoiceItems(
-                choices.map { secondsLabel(it) }.toTypedArray(),
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_clock)
+            .title(R.string.minimum_duration)
+            .message(R.string.minimum_duration_subtitle)
+            .choices(
+                choices.map { DayTraceDialog.Choice(secondsLabel(it)) },
                 choices.indexOf(settings.minimumSeconds).coerceAtLeast(0)
-            ) { dialog, index ->
+            ) { index ->
                 settings.minimumSeconds = choices[index]
                 renderRows()
-                dialog.dismiss()
             }
+            .secondary(R.string.cancel)
             .show()
     }
 

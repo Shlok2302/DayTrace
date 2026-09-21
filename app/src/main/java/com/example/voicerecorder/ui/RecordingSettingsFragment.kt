@@ -9,7 +9,6 @@ import androidx.core.content.ContextCompat
 import com.example.voicerecorder.R
 import com.example.voicerecorder.settings.AppSettings
 import com.example.voicerecorder.settings.RecordingQuality
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Settings > Recording.
@@ -72,17 +71,20 @@ class RecordingSettingsFragment : SettingsPageFragment() {
         val choices =
             RecordingQuality.values()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.recording_quality)
-            .setSingleChoiceItems(
-                choices.map { getString(R.string.quality_option, it.label, it.bitRate / 1000) }
-                    .toTypedArray(),
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_waveform)
+            .title(R.string.recording_quality)
+            .message(R.string.recording_quality_subtitle)
+            .choices(
+                choices.map {
+                    DayTraceDialog.Choice(it.label, getString(R.string.quality_detail, it.bitRate / 1000, it.sampleRate / 1000f))
+                },
                 choices.indexOf(settings.recordingQuality)
-            ) { dialog, index ->
+            ) { index ->
                 settings.recordingQuality = choices[index]
                 renderRows()
-                dialog.dismiss()
             }
+            .secondary(R.string.cancel)
             .show()
     }
 

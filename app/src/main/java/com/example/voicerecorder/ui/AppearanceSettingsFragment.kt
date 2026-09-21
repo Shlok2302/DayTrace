@@ -3,7 +3,6 @@ package com.example.voicerecorder.ui
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.voicerecorder.R
 import com.example.voicerecorder.settings.AppTheme
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Settings > Appearance.
@@ -31,14 +30,21 @@ class AppearanceSettingsFragment : SettingsPageFragment() {
         val choices =
             AppTheme.values()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.theme)
-            .setSingleChoiceItems(
-                choices.map { it.label }.toTypedArray(),
-                choices.indexOf(settings.theme)
-            ) { dialog, index ->
+        val details =
+            mapOf(
+                AppTheme.SYSTEM to R.string.theme_system_detail,
+                AppTheme.LIGHT to R.string.theme_light_detail,
+                AppTheme.DARK to R.string.theme_dark_detail
+            )
 
-                dialog.dismiss()
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_palette)
+            .title(R.string.theme)
+            .message(R.string.theme_subtitle)
+            .choices(
+                choices.map { DayTraceDialog.Choice(it.label, details[it]?.let { id -> getString(id) }) },
+                choices.indexOf(settings.theme)
+            ) { index ->
 
                 val picked = choices[index]
 
@@ -48,6 +54,7 @@ class AppearanceSettingsFragment : SettingsPageFragment() {
                     AppCompatDelegate.setDefaultNightMode(picked.mode)
                 }
             }
+            .secondary(R.string.cancel)
             .show()
     }
 }

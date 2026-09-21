@@ -38,6 +38,9 @@ import com.example.voicerecorder.R
  *
  * Destructive actions keep the dark green main button; the tone shows in
  * the icon and the warning, so the dialog stays calm rather than alarming.
+ *
+ * With [choices] it is a picker (the current value is ticked) or a list
+ * of options; picking one closes it.
  */
 class DayTraceDialog(
     private val context: Context
@@ -61,6 +64,13 @@ class DayTraceDialog(
         val onClick: () -> Unit
     )
 
+    /** One entry of a [choices] list. */
+    class Choice(
+        val label: CharSequence,
+        val detail: CharSequence? = null,
+        @DrawableRes val icon: Int? = null
+    )
+
     private var tone = Tone.NEUTRAL
     private var icon = R.drawable.ic_leaf
     private var title: CharSequence = ""
@@ -71,6 +81,9 @@ class DayTraceDialog(
     private var secondary: Action? = null
     private var extra: Action? = null
     private var extraDestructive = false
+    private var choices: List<Choice>? = null
+    private var selected: Int? = null
+    private var onPick: (Int) -> Unit = {}
 
     fun tone(tone: Tone) = apply { this.tone = tone }
 
@@ -132,6 +145,21 @@ class DayTraceDialog(
         onClick: () -> Unit
     ) = extra(context.getString(label), destructive, onClick)
 
+    /**
+     * A list to pick from. [selected] ticks the current value (a settings
+     * picker); without it the entries are options with a chevron. Picking
+     * one closes the dialog and calls [onPick] with its position.
+     */
+    fun choices(
+        items: List<Choice>,
+        selected: Int? = null,
+        onPick: (Int) -> Unit
+    ) = apply {
+        this.choices = items
+        this.selected = selected
+        this.onPick = onPick
+    }
+
     fun show(): Dialog {
 
         val dialog =
@@ -152,6 +180,7 @@ class DayTraceDialog(
         view.findViewById<View>(R.id.callout).isVisible = !warning.isNullOrBlank()
         view.findViewById<TextView>(R.id.calloutText).text = warning
 
+        bindChoices(view, dialog)
         bindButtons(view, dialog)
 
         view.findViewById<View>(R.id.btnClose).setOnClickListener { dialog.cancel() }
@@ -190,6 +219,71 @@ class DayTraceDialog(
         }
     }
 
+    private fun bindChoices(
+        view: View,
+        dialog: Dialog
+    ) {
+
+        val items =
+            choices ?: return
+
+        val list =
+            view.findViewById<LinearLayout>(R.id.choices)
+
+        list.isVisible = true
+
+        val inflater =
+            LayoutInflater.from(context)
+
+        items.forEachIndexed { index, choice ->
+
+            val row =
+                inflater.inflate(R.layout.item_dialog_choice, list, false)
+
+            val isSelected =
+                index == selected
+
+            row.setBackgroundResource(
+                if (isSelected) R.drawable.bg_dialog_choice_selected else R.drawable.bg_dialog_choice
+            )
+
+            row.findViewById<TextView>(R.id.label).text = choice.label
+
+            row.findViewById<TextView>(R.id.detail).apply {
+                text = choice.detail
+                isVisible = !choice.detail.isNullOrBlank()
+            }
+
+            row.findViewById<View>(R.id.iconHolder).isVisible = choice.icon != null
+            choice.icon?.let { row.findViewById<ImageView>(R.id.icon).setImageResource(it) }
+
+            row.findViewById<ImageView>(R.id.indicator).apply {
+                when {
+                    // A list of options: each one leads somewhere.
+                    selected == null -> {
+                        setImageResource(R.drawable.ic_chevron_right)
+                        imageTintList = ContextCompat.getColorStateList(context, R.color.text_tertiary)
+                    }
+                    isSelected -> setImageResource(R.drawable.ic_choice_on)
+                    else -> setImageResource(R.drawable.ic_choice_off)
+                }
+            }
+
+            row.isSelected = isSelected
+
+            row.setOnClickListener {
+                dialog.dismiss()
+                onPick(index)
+            }
+
+            list.addView(
+                row,
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    .apply { if (index > 0) topMargin = dp(10) }
+            )
+        }
+    }
+
     private fun bindButtons(
         view: View,
         dialog: Dialog
@@ -205,14 +299,19 @@ class DayTraceDialog(
             view.findViewById<TextView>(R.id.btnSecondary)
 
         val main =
-            primary ?: Action(context.getString(R.string.close)) {}
+            primary ?: if (choices == null) Action(context.getString(R.string.close)) {} else null
 
-        primaryButton.text =
-            if (primaryArrow) withArrow(main.label) else main.label
+        primaryButton.isVisible = main != null
 
-        primaryButton.setOnClickListener {
-            dialog.dismiss()
-            main.onClick()
+        if (main != null) {
+
+            primaryButton.text =
+                if (primaryArrow) withArrow(main.label) else main.label
+
+            primaryButton.setOnClickListener {
+                dialog.dismiss()
+                main.onClick()
+            }
         }
 
         val second =
@@ -229,7 +328,7 @@ class DayTraceDialog(
         }
 
         // Long labels do not fit side by side: stack them, the main action on top.
-        if (second != null && main.label.length + second.label.length > STACK_AFTER_CHARS) {
+        if (main != null && second != null && main.label.length + second.label.length > STACK_AFTER_CHARS) {
             buttons.orientation = LinearLayout.VERTICAL
             buttons.removeAllViews()
             buttons.addView(primaryButton, stacked(0))

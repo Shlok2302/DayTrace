@@ -1,8 +1,6 @@
 package com.example.voicerecorder.ui
 
 import android.Manifest
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -33,12 +31,18 @@ import com.example.voicerecorder.summary.ImportWorker
 import com.example.voicerecorder.summary.NoteStore
 import com.example.voicerecorder.summary.SavedRecording
 import com.example.voicerecorder.summary.SummaryWorker
+import com.google.android.material.datepicker.CalendarConstraints
+import com.google.android.material.datepicker.DateValidatorPointBackward
+import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 
 /**
@@ -371,32 +375,56 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
         val start =
             Instant.ofEpochMilli(initial ?: System.currentTimeMillis()).atZone(ZoneId.systemDefault())
 
-        DatePickerDialog(
-            requireContext(),
-            { _, year, month, day ->
-                TimePickerDialog(
-                    requireContext(),
-                    { _, hour, minute ->
-                        val chosen =
-                            LocalDateTime.of(year, month + 1, day, hour, minute)
-                                .atZone(ZoneId.systemDefault())
-                                .toInstant()
-                                .toEpochMilli()
-                        if (chosen > System.currentTimeMillis()) {
-                            Toast.makeText(requireContext(), R.string.import_time_in_future, Toast.LENGTH_LONG).show()
-                        } else {
-                            startImport(picked, chosen, NoteStore.SOURCE_CHOSEN)
-                        }
-                    },
-                    start.hour,
-                    start.minute,
-                    DateFormat.is24HourFormat(requireContext())
-                ).show()
-            },
-            start.year,
-            start.monthValue - 1,
-            start.dayOfMonth
-        ).apply { datePicker.maxDate = System.currentTimeMillis() }.show()
+        // Styled like the rest of DayTrace (see DayTraceCalendar / DayTraceClock).
+        // The calendar works in UTC days; no day after today can be picked.
+        val datePicker =
+            MaterialDatePicker.Builder.datePicker()
+                .setTheme(R.style.DayTraceCalendar)
+                .setTitleText(R.string.import_pick_date_title)
+                .setSelection(start.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+                .setCalendarConstraints(
+                    CalendarConstraints.Builder()
+                        .setEnd(System.currentTimeMillis())
+                        .setValidator(DateValidatorPointBackward.now())
+                        .build()
+                )
+                .build()
+
+        datePicker.addOnPositiveButtonClickListener { selection ->
+
+            val day =
+                Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
+
+            val timePicker =
+                MaterialTimePicker.Builder()
+                    .setTheme(R.style.DayTraceClock)
+                    .setTitleText(R.string.import_pick_time_title)
+                    .setTimeFormat(
+                        if (DateFormat.is24HourFormat(requireContext())) TimeFormat.CLOCK_24H else TimeFormat.CLOCK_12H
+                    )
+                    .setHour(start.hour)
+                    .setMinute(start.minute)
+                    .build()
+
+            timePicker.addOnPositiveButtonClickListener {
+
+                val chosen =
+                    day.atTime(timePicker.hour, timePicker.minute)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+
+                if (chosen > System.currentTimeMillis()) {
+                    Toast.makeText(requireContext(), R.string.import_time_in_future, Toast.LENGTH_LONG).show()
+                } else {
+                    startImport(picked, chosen, NoteStore.SOURCE_CHOSEN)
+                }
+            }
+
+            timePicker.show(childFragmentManager, "import_time")
+        }
+
+        datePicker.show(childFragmentManager, "import_date")
     }
 
     private fun startImport(

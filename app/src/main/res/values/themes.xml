@@ -89,6 +89,33 @@
         <item name="android:windowExitAnimation">@anim/dialog_exit</item>
     </style>
 
+    <!-- Date and time pickers (import audio): DayTrace colours and a rounded card -->
+
+    <style name="DayTraceCalendar" parent="ThemeOverlay.MaterialComponents.MaterialCalendar">
+        <item name="colorPrimary">@color/forest</item>
+        <item name="colorOnPrimary">@color/on_forest</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="shapeAppearanceMediumComponent">@style/DayTraceRoundedCard</item>
+        <item name="android:windowAnimationStyle">@style/DayTraceDialog.Animation</item>
+        <item name="android:backgroundDimAmount">0.42</item>
+    </style>
+
+    <style name="DayTraceClock" parent="ThemeOverlay.MaterialComponents.TimePicker">
+        <item name="colorPrimary">@color/forest</item>
+        <item name="colorOnPrimary">@color/on_forest</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="shapeAppearanceMediumComponent">@style/DayTraceRoundedCard</item>
+        <item name="android:windowAnimationStyle">@style/DayTraceDialog.Animation</item>
+        <item name="android:backgroundDimAmount">0.42</item>
+    </style>
+
+    <style name="DayTraceRoundedCard" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28dp</item>
+    </style>
+
     <!-- Cards -->
 
     <style name="Card" parent="Widget.MaterialComponents.CardView">
