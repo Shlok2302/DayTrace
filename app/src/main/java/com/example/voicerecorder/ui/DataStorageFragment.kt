@@ -161,13 +161,15 @@ class DataStorageFragment : SettingsPageFragment() {
 
             val (contents, alreadyHere) =
                 result.getOrElse { error ->
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.import_data_invalid_title)
-                        .setMessage(
+                    DayTraceDialog(requireContext())
+                        .tone(DayTraceDialog.Tone.WARNING)
+                        .icon(R.drawable.ic_warning)
+                        .title(R.string.import_data_invalid_title)
+                        .message(
                             (error as? DayTraceBackup.BackupException)?.message
                                 ?: getString(R.string.import_data_unreadable)
                         )
-                        .setPositiveButton(R.string.close, null)
+                        .primary(R.string.close)
                         .show()
                     return@launch
                 }
@@ -185,17 +187,23 @@ class DataStorageFragment : SettingsPageFragment() {
                 )
 
             val dialog =
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.import_data)
-                    .setNegativeButton(R.string.cancel, null)
-                    .setNeutralButton(R.string.import_data_replace) { _, _ -> confirmReplace(contents) }
+                DayTraceDialog(requireContext())
+                    .extra(R.string.import_data_replace, destructive = true) { confirmReplace(contents) }
 
             if (newNotes > 0) {
                 dialog
-                    .setMessage(summary + "\n\n" + resources.getQuantityString(R.plurals.import_data_add_hint, newNotes, newNotes))
-                    .setPositiveButton(R.string.import_data_add) { _, _ -> restore(contents, replace = false) }
+                    .icon(R.drawable.ic_import)
+                    .title(R.string.import_data_confirm_title)
+                    .message(summary + "\n\n" + resources.getQuantityString(R.plurals.import_data_add_hint, newNotes, newNotes))
+                    .primary(R.string.import_data_add, arrow = true) { restore(contents, replace = false) }
+                    .secondary(R.string.cancel)
             } else {
-                dialog.setMessage(summary + "\n\n" + getString(R.string.import_data_nothing_new))
+                dialog
+                    .tone(DayTraceDialog.Tone.SUCCESS)
+                    .icon(R.drawable.ic_check_circle)
+                    .title(R.string.import_data_uptodate_title)
+                    .message(summary + "\n\n" + getString(R.string.import_data_nothing_new))
+                    .primary(R.string.close)
             }
 
             dialog.show()
@@ -214,11 +222,14 @@ class DataStorageFragment : SettingsPageFragment() {
                     Notes.recordings(requireContext().applicationContext).sumOf { it.notes.size }
                 }
 
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.import_data_replace_title)
-                .setMessage(getString(R.string.import_data_replace_message, local, contents.noteCount))
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.import_data_replace) { _, _ -> restore(contents, replace = true) }
+            DayTraceDialog(requireContext())
+                .tone(DayTraceDialog.Tone.DANGER)
+                .icon(R.drawable.ic_refresh)
+                .title(R.string.import_data_replace_title)
+                .message(getString(R.string.import_data_replace_detail, local, contents.noteCount))
+                .warning(R.string.import_data_replace_warning)
+                .primary(R.string.replace_notes_action, arrow = true) { restore(contents, replace = true) }
+                .secondary(R.string.cancel)
                 .show()
         }
     }
@@ -247,10 +258,12 @@ class DataStorageFragment : SettingsPageFragment() {
                     onFailure = { getString(R.string.import_data_failed) }
                 )
 
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.import_data)
-                .setMessage(message)
-                .setPositiveButton(R.string.close, null)
+            DayTraceDialog(requireContext())
+                .tone(if (result.isSuccess) DayTraceDialog.Tone.SUCCESS else DayTraceDialog.Tone.WARNING)
+                .icon(if (result.isSuccess) R.drawable.ic_check_circle else R.drawable.ic_warning)
+                .title(if (result.isSuccess) R.string.import_data_done_title else R.string.import_data_failed_title)
+                .message(message)
+                .primary(R.string.close)
                 .show()
         }
     }
@@ -268,10 +281,11 @@ class DataStorageFragment : SettingsPageFragment() {
             val summary =
                 withContext(Dispatchers.IO) { storageSummary(requireContext()) }
 
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.storage_used)
-                .setMessage(summary)
-                .setPositiveButton(R.string.close, null)
+            DayTraceDialog(requireContext())
+                .icon(R.drawable.ic_database)
+                .title(R.string.storage_used)
+                .message(summary)
+                .primary(R.string.close)
                 .show()
         }
     }

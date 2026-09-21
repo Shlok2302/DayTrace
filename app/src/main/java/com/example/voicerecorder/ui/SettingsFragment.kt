@@ -4,7 +4,6 @@ import android.os.Build
 import com.example.voicerecorder.BuildConfig
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * The main Settings page.
@@ -84,24 +83,27 @@ class SettingsFragment : SettingsPageFragment() {
     }
 
     private fun showPrivacy() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.settings_privacy)
-            .setMessage(R.string.privacy_details)
-            .setPositiveButton(R.string.close, null)
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.INFO)
+            .icon(R.drawable.ic_shield)
+            .title(R.string.settings_privacy)
+            .message(R.string.privacy_details)
+            .primary(R.string.close)
             .show()
     }
 
     private fun showAbout() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.settings_about)
-            .setMessage(
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_leaf)
+            .title(R.string.settings_about)
+            .message(
                 getString(
                     R.string.about_details,
                     BuildConfig.VERSION_NAME,
                     Build.VERSION.RELEASE
                 )
             )
-            .setPositiveButton(R.string.close, null)
+            .primary(R.string.close)
             .show()
     }
 }

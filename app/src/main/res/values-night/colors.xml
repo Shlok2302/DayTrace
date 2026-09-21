@@ -46,6 +46,12 @@
     <color name="gossip_soft">#243B52</color>
     <color name="gossip_tint">#1C262E</color>
 
+    <!-- Dialogs -->
+    <color name="danger_tint">#261C1D</color>
+    <color name="callout_background">#33271E</color>
+    <color name="callout_text">#F0B68D</color>
+    <color name="dialog_outline">#3F5A48</color>
+
     <!-- Pieces that used to be hardcoded inside drawables -->
     <color name="record_red_stroke">#40F0716C</color>
     <color name="switch_off">#3A4042</color>

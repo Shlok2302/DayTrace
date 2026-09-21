@@ -150,6 +150,10 @@
     <string name="deleted_forever">Note deleted for good</string>
     <string name="delete_forever_confirm_title">Delete this note forever?</string>
     <string name="delete_forever_confirm_message">It can\'t be restored afterwards.</string>
+    <string name="delete_forever_confirm_detail">“%1$s” will be deleted for good.</string>
+    <string name="cant_be_undone">This can\'t be undone.</string>
+    <string name="empty_bin_action">Empty bin</string>
+    <string name="replace_notes_action">Replace notes</string>
 
     <string name="settings_recycle_bin">Recycle bin</string>
     <string name="settings_recycle_bin_subtitle">Deleted and completed notes</string>
@@ -158,9 +162,9 @@
     <string name="bin_empty_all">Empty recycle bin</string>
     <string name="bin_emptied">Recycle bin emptied</string>
     <string name="bin_empty_confirm_title">Empty the recycle bin?</string>
-    <plurals name="bin_empty_confirm_message">
-        <item quantity="one">%d note will be deleted for good. This can\'t be undone.</item>
-        <item quantity="other">%d notes will be deleted for good. This can\'t be undone.</item>
+    <plurals name="bin_empty_confirm_count">
+        <item quantity="one">%d note will be deleted for good.</item>
+        <item quantity="other">%d notes will be deleted for good.</item>
     </plurals>
     <string name="bin_status_done">Completed %1$s</string>
     <string name="bin_status_deleted">Deleted %1$s</string>
@@ -284,7 +288,12 @@
     <string name="import_data_add">Add to my notes</string>
     <string name="import_data_replace">Replace my notes</string>
     <string name="import_data_replace_title">Replace your notes?</string>
-    <string name="import_data_replace_message">This deletes the %1$d notes on this phone (including the recycle bin) and restores the %2$d notes in the backup. It can\'t be undone.</string>
+    <string name="import_data_replace_detail">This deletes the %1$d notes on this phone (including the recycle bin) and restores the %2$d notes in the backup.</string>
+    <string name="import_data_replace_warning">Your current notes will be removed for good. Export a backup first if you might still need them.</string>
+    <string name="import_data_confirm_title">Restore this backup?</string>
+    <string name="import_data_uptodate_title">Already up to date</string>
+    <string name="import_data_done_title">Notes restored</string>
+    <string name="import_data_failed_title">Restore incomplete</string>
     <plurals name="import_data_restored">
         <item quantity="one">Restored %d note.</item>
         <item quantity="other">Restored %d notes.</item>

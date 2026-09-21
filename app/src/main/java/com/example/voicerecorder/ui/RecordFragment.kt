@@ -33,7 +33,6 @@ import com.example.voicerecorder.summary.ImportWorker
 import com.example.voicerecorder.summary.NoteStore
 import com.example.voicerecorder.summary.SavedRecording
 import com.example.voicerecorder.summary.SummaryWorker
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -290,11 +289,13 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
             if (earlier == null) {
                 confirmRecordingTime(picked)
             } else {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.import_again_title)
-                    .setMessage(getString(R.string.import_again_message, picked.name, Notes.formatDateTime(earlier.processedAt)))
-                    .setNegativeButton(R.string.cancel, null)
-                    .setPositiveButton(R.string.import_again) { _, _ -> confirmRecordingTime(picked) }
+                DayTraceDialog(requireContext())
+                    .tone(DayTraceDialog.Tone.WARNING)
+                    .icon(R.drawable.ic_import)
+                    .title(R.string.import_again_title)
+                    .message(getString(R.string.import_again_message, picked.name, Notes.formatDateTime(earlier.processedAt)))
+                    .primary(R.string.import_again) { confirmRecordingTime(picked) }
+                    .secondary(R.string.cancel)
                     .show()
             }
         }
@@ -316,8 +317,8 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
             picked.lastModified
 
         val dialog =
-            MaterialAlertDialogBuilder(requireContext())
-                .setNegativeButton(R.string.cancel, null)
+            DayTraceDialog(requireContext())
+                .secondary(R.string.cancel)
 
         when {
             known != null -> {
@@ -330,28 +331,33 @@ class RecordFragment : Fragment(R.layout.fragment_record) {
                         }
                     )
                 dialog
-                    .setTitle(R.string.import_audio_title)
-                    .setMessage(getString(R.string.import_recorded_known, picked.name, Notes.formatDateTime(known), from))
-                    .setPositiveButton(R.string.import_action) { _, _ ->
+                    .icon(R.drawable.ic_import)
+                    .title(R.string.import_audio_title)
+                    .message(getString(R.string.import_recorded_known, picked.name, Notes.formatDateTime(known), from))
+                    .primary(R.string.import_action, arrow = true) {
                         startImport(picked, known, picked.recordedAtSource ?: NoteStore.SOURCE_FILE_NAME)
                     }
-                    .setNeutralButton(R.string.import_change_time) { _, _ -> pickRecordingTime(picked, known) }
+                    .extra(R.string.import_change_time) { pickRecordingTime(picked, known) }
             }
 
             lastModified != null ->
                 dialog
-                    .setTitle(R.string.import_when_title)
-                    .setMessage(getString(R.string.import_recorded_file_date, picked.name, Notes.formatDateTime(lastModified)))
-                    .setPositiveButton(R.string.import_use_file_date) { _, _ ->
+                    .tone(DayTraceDialog.Tone.WARNING)
+                    .icon(R.drawable.ic_calendar)
+                    .title(R.string.import_when_title)
+                    .message(getString(R.string.import_recorded_file_date, picked.name, Notes.formatDateTime(lastModified)))
+                    .primary(R.string.import_use_file_date) {
                         startImport(picked, lastModified, NoteStore.SOURCE_FILE_DATE)
                     }
-                    .setNeutralButton(R.string.import_pick_time) { _, _ -> pickRecordingTime(picked, lastModified) }
+                    .extra(R.string.import_pick_time) { pickRecordingTime(picked, lastModified) }
 
             else ->
                 dialog
-                    .setTitle(R.string.import_when_title)
-                    .setMessage(getString(R.string.import_recorded_unknown, picked.name))
-                    .setPositiveButton(R.string.import_pick_time) { _, _ -> pickRecordingTime(picked, null) }
+                    .tone(DayTraceDialog.Tone.WARNING)
+                    .icon(R.drawable.ic_calendar)
+                    .title(R.string.import_when_title)
+                    .message(getString(R.string.import_recorded_unknown, picked.name))
+                    .primary(R.string.import_pick_time) { pickRecordingTime(picked, null) }
         }
 
         dialog.show()

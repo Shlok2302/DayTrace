@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The DayTrace dialog (see ui/DayTraceDialog.kt): a cream card with a soft
+    illustrated icon, a serif title, a short explanation, an optional gentle
+    warning, and pill-shaped actions.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="22dp"
+    android:paddingVertical="28dp"
+    android:clipToPadding="false"
+    android:clipChildren="false">
+
+    <FrameLayout
+        android:id="@+id/card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_dialog_card"
+        android:elevation="20dp">
+
+        <!-- The leaf of the app background, very faint in the corner -->
+        <ImageView
+            android:id="@+id/leaf"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="-58dp"
+            android:layout_marginBottom="-62dp"
+            android:rotation="-12"
+            android:alpha="0.06"
+            android:src="@drawable/ic_leaf_filled"
+            android:importantForAccessibility="no"
+            android:contentDescription="@null"
+            app:tint="@color/forest" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="30dp"
+            android:paddingBottom="22dp">
+
+            <!-- Illustration: a soft halo, a circle and the icon, with a little sparkle -->
+            <FrameLayout
+                android:layout_width="112dp"
+                android:layout_height="112dp">
+
+                <View
+                    android:id="@+id/halo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_oval" />
+
+                <ImageView
+                    android:id="@+id/sparks"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.55"
+                    android:src="@drawable/ic_dialog_sparks"
+                    android:importantForAccessibility="no"
+                    android:contentDescription="@null" />
+
+                <FrameLayout
+                    android:id="@+id/iconCircle"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_oval"
+                    android:elevation="2dp">
+
+                    <ImageView
+                        android:id="@+id/icon"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:importantForAccessibility="no"
+                        android:contentDescription="@null" />
+
+                </FrameLayout>
+
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="center"
+                style="@style/Text.Title"
+                android:textSize="23sp" />
+
+            <TextView
+                android:id="@+id/message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                style="@style/Text.Body" />
+
+            <!-- A gentle warning, for actions that cannot be undone -->
+            <LinearLayout
+                android:id="@+id/callout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_dialog_callout"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_warning"
+                    android:importantForAccessibility="no"
+                    android:contentDescription="@null"
+                    app:tint="@color/callout_text" />
+
+                <TextView
+                    android:id="@+id/calloutText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:textColor="@color/callout_text"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="2sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/buttons"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnSecondary"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:background="@drawable/bg_button_outline"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:textColor="@color/forest"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/btnPrimary"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="16dp"
+                    android:drawablePadding="8dp"
+                    android:background="@drawable/bg_button_forest"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:textColor="@color/on_forest"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnExtra"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:paddingHorizontal="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:textColor="@color/forest"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="14dp"
+            android:background="@drawable/bg_dialog_close"
+            android:src="@drawable/ic_close"
+            android:scaleType="centerInside"
+            android:padding="10dp"
+            android:contentDescription="@string/close"
+            app:tint="@color/text_secondary" />
+
+    </FrameLayout>
+
+</FrameLayout>

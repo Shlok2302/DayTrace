@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- A soft leaf silhouette, used faintly as a decoration (tinted where used). -->
+    <path
+        android:pathData="M3.5,20.5 C3.5,10 9.5,3.5 20.5,3.5 C20.5,14 14,20.5 3.5,20.5 Z"
+        android:fillColor="#FF000000" />
+</vector>

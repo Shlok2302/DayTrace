@@ -14,7 +14,6 @@ import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
 import com.example.voicerecorder.summary.NoteActions
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -142,15 +141,18 @@ class RecycleBinFragment : Fragment(R.layout.fragment_settings) {
             isFocusable = true
 
             setOnClickListener { button ->
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.bin_empty_confirm_title)
-                    .setMessage(resources.getQuantityString(R.plurals.bin_empty_confirm_message, count, count))
-                    .setNegativeButton(R.string.cancel, null)
-                    .setPositiveButton(R.string.delete_forever) { _, _ ->
+                DayTraceDialog(requireContext())
+                    .tone(DayTraceDialog.Tone.DANGER)
+                    .icon(R.drawable.ic_trash)
+                    .title(R.string.bin_empty_confirm_title)
+                    .message(resources.getQuantityString(R.plurals.bin_empty_confirm_count, count, count))
+                    .warning(R.string.cant_be_undone)
+                    .primary(R.string.empty_bin_action) {
                         NoteCards.run(button, R.string.bin_emptied, { if (view != null) load() }) {
                             NoteActions.emptyBin(it) > 0
                         }
                     }
+                    .secondary(R.string.cancel)
                     .show()
             }
         }

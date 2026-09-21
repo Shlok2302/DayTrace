@@ -19,7 +19,6 @@ import com.example.voicerecorder.summary.GeminiSummarizer
 import com.example.voicerecorder.summary.Note
 import com.example.voicerecorder.summary.NoteActions
 import com.example.voicerecorder.summary.NoteStore
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.concurrent.thread
@@ -305,13 +304,16 @@ object NoteCards {
         entry: NoteEntry,
         onChanged: () -> Unit
     ) {
-        MaterialAlertDialogBuilder(anchor.context)
-            .setTitle(R.string.delete_forever_confirm_title)
-            .setMessage(R.string.delete_forever_confirm_message)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete_forever) { _, _ ->
+        DayTraceDialog(anchor.context)
+            .tone(DayTraceDialog.Tone.DANGER)
+            .icon(R.drawable.ic_trash)
+            .title(R.string.delete_forever_confirm_title)
+            .message(anchor.context.getString(R.string.delete_forever_confirm_detail, entry.note.title))
+            .warning(R.string.delete_forever_confirm_message)
+            .primary(R.string.delete_forever) {
                 run(anchor, R.string.deleted_forever, onChanged) { NoteActions.deleteForever(it, entry.id) }
             }
+            .secondary(R.string.cancel)
             .show()
     }
 
