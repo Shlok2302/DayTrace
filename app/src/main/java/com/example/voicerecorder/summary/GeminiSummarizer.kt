@@ -98,14 +98,22 @@ class GeminiSummarizer(
         val size =
             audioSize(audioUri)
 
+        // Two-step flow only: the transcript exactly as the transcription
+        // model returned it, which is the one that is saved.
+        var rawTranscript: String? = null
+
         val response =
-            if (size <= INLINE_LIMIT_BYTES) {
+            if (settings.geminiModel == TRANSCRIBE_MODEL) {
+                val (transcript, notesResponse) = transcribeAndExtract(audioUri, size, recordedTime)
+                rawTranscript = transcript
+                notesResponse
+            } else if (size <= INLINE_LIMIT_BYTES) {
                 generateInline(audioUri, recordedTime)
             } else {
                 generateFromUpload(audioUri, size, recordedTime)
             }
 
-        parseNotes(response, recordedTime)
+        parseNotes(response, recordedTime, rawTranscript)
     }
 
     private fun audioSize(
@@ -293,6 +301,199 @@ class GeminiSummarizer(
         )
     }
 
+    // ── Transcribe-and-extract pipeline ─────────────────────────────
+
+    /**
+     * Two-step flow for the dedicated transcription model:
+     * 1. [TRANSCRIBE_MODEL] turns the audio into text.
+     * 2. [NOTES_FALLBACK_MODEL] (text-only, no audio) extracts
+     *    structured notes from that transcript.
+     *
+     * This avoids the multimodal audio queue that is often overloaded
+     * on the general-purpose Flash models.
+     *
+     * Returns the transcript exactly as step 1 gave it, and step 2's
+     * answer. The transcript is taken before step 2 runs and is the one
+     * that gets saved, so it never depends on the extraction model
+     * copying it back correctly.
+     */
+    private suspend fun transcribeAndExtract(
+        audioUri: Uri,
+        size: Long,
+        recordedAt: LocalDateTime
+    ): Pair<String, JSONObject> {
+
+        val transcribeResponse =
+            try {
+                if (size <= INLINE_LIMIT_BYTES) {
+                    transcribeInline(audioUri)
+                } else {
+                    transcribeFromUpload(audioUri, size)
+                }
+            } catch (e: JSONException) {
+                // An answer that could not be read is a failed request, not silence.
+                throw GeminiException(
+                    "Transcription failed: Gemini's answer could not be read",
+                    FailureReason.TRANSCRIPTION_FAILED,
+                    retryable = true
+                )
+            }
+
+        // Throws (retryable) for anything but a finished, well-formed answer.
+        val transcript =
+            readTranscription(transcribeResponse)
+
+        // Only a finished, well-formed answer with no words in it is silence.
+        if (transcript.isEmpty()) {
+            throw GeminiException(NO_SPEECH, FailureReason.NO_SPEECH)
+        }
+
+        return transcript to extractNotes(transcript, recordedAt)
+    }
+
+    /**
+     * Sends audio inline to [TRANSCRIBE_MODEL]. Mirrors [generateInline]
+     * but sends a minimal prompt and no response schema.
+     */
+    private fun transcribeInline(
+        audioUri: Uri
+    ): JSONObject {
+
+        val audioPart =
+            JSONObject().put(
+                "inline_data",
+                JSONObject()
+                    .put("mime_type", MIME_TYPE)
+                    .put("data", AUDIO_PLACEHOLDER)
+            )
+
+        val body =
+            JSONObject()
+                .put(
+                    "contents",
+                    JSONArray().put(
+                        JSONObject().put(
+                            "parts",
+                            JSONArray()
+                                .put(audioPart)
+                                .put(JSONObject().put("text", TRANSCRIBE_PROMPT))
+                        )
+                    )
+                )
+
+        val (head, tail) =
+            body.toString().split(AUDIO_PLACEHOLDER)
+
+        return json(modelUrl(TRANSCRIBE_MODEL), "POST") {
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setChunkedStreamingMode(0)
+
+            outputStream.buffered().use { out ->
+                out.write(head.toByteArray())
+
+                Base64OutputStream(out, Base64.NO_WRAP or Base64.NO_CLOSE).use { base64 ->
+                    openAudio(audioUri).use { it.copyTo(base64) }
+                }
+
+                out.write(tail.toByteArray())
+            }
+        }
+    }
+
+    /**
+     * Upload through the Files API, then reference the file in a
+     * request to [TRANSCRIBE_MODEL]. Mirrors [generateFromUpload].
+     */
+    private suspend fun transcribeFromUpload(
+        audioUri: Uri,
+        size: Long
+    ): JSONObject {
+
+        val file =
+            uploadAudio(audioUri, size)
+
+        val fileName =
+            file.getString("name")
+
+        try {
+            if (file.optString("state") != "ACTIVE") {
+                waitUntilActive(fileName)
+            }
+
+            val audioPart =
+                JSONObject().put(
+                    "file_data",
+                    JSONObject()
+                        .put("mime_type", MIME_TYPE)
+                        .put("file_uri", file.getString("uri"))
+                )
+
+            val body =
+                JSONObject()
+                    .put(
+                        "contents",
+                        JSONArray().put(
+                            JSONObject().put(
+                                "parts",
+                                JSONArray()
+                                    .put(audioPart)
+                                    .put(JSONObject().put("text", TRANSCRIBE_PROMPT))
+                            )
+                        )
+                    )
+
+            return json(modelUrl(TRANSCRIBE_MODEL), "POST") {
+                writeJson(body.toString())
+            }
+
+        } finally {
+            runCatching {
+                call("$BASE_URL/v1beta/$fileName", "DELETE") {}
+            }
+        }
+    }
+
+    /**
+     * Sends the already-transcribed text to [NOTES_FALLBACK_MODEL]
+     * with the full prompt and structured schema, returning the same
+     * JSON shape that [parseNotes] expects.
+     */
+    private fun extractNotes(
+        transcript: String,
+        recordedAt: LocalDateTime
+    ): JSONObject {
+
+        val textPart =
+            JSONObject().put(
+                "text",
+                prompt(recordedAt) +
+                        "\n\nThe audio has already been transcribed for you." +
+                        " Use this transcript exactly as given in the" +
+                        " \"transcript\" field:\n\n" + transcript
+            )
+
+        val body =
+            JSONObject()
+                .put(
+                    "contents",
+                    JSONArray().put(
+                        JSONObject().put("parts", JSONArray().put(textPart))
+                    )
+                )
+                .put(
+                    "generationConfig",
+                    JSONObject()
+                        .put("responseMimeType", "application/json")
+                        .put("responseSchema", JSONObject(RESPONSE_SCHEMA))
+                        .put("maxOutputTokens", MAX_OUTPUT_TOKENS)
+                )
+
+        return json(modelUrl(NOTES_FALLBACK_MODEL), "POST") {
+            writeJson(body.toString())
+        }
+    }
+
     private fun requestBody(
         audioPart: JSONObject,
         recordedAt: LocalDateTime
@@ -320,9 +521,15 @@ class GeminiSummarizer(
             )
     }
 
+    /**
+     * [rawTranscript]: the two-step flow's transcript, exactly as the
+     * transcription model returned it. When given, it is the transcript
+     * that is kept (see [useRawTranscript]).
+     */
     private fun parseNotes(
         response: JSONObject,
-        recordedAt: LocalDateTime
+        recordedAt: LocalDateTime,
+        rawTranscript: String? = null
     ): RecordingNotes {
 
         val candidate =
@@ -367,6 +574,10 @@ class GeminiSummarizer(
                     FailureReason.PROCESSING_FAILED
                 )
             }
+
+        if (rawTranscript != null) {
+            useRawTranscript(result, rawTranscript)
+        }
 
         /*
          * No speech or no usable transcript means transcription did NOT
@@ -580,6 +791,114 @@ class GeminiSummarizer(
          */
         const val DEFAULT_MODEL =
             "gemini-3.5-flash-lite"
+
+        const val TRANSCRIBE_MODEL =
+            "gemini-3.5-transcribe"
+
+        private const val NOTES_FALLBACK_MODEL =
+            "gemma-4-26b-a4b-it"
+
+        private const val TRANSCRIBE_PROMPT =
+            "Transcribe this audio."
+
+        private fun modelUrl(model: String): String =
+            "$BASE_URL/v1beta/models/$model:generateContent"
+
+        /**
+         * The model for text-only requests with a JSON answer: the notes
+         * of the two-step flow, and EventDetector's "is this an event or a
+         * to-do?". The transcription model only transcribes audio (Google
+         * answers "JSON mode is not enabled for this model"), so while it
+         * is selected those requests go to [NOTES_FALLBACK_MODEL].
+         */
+        fun textModel(
+            selected: String
+        ): String =
+            if (selected == TRANSCRIBE_MODEL) NOTES_FALLBACK_MODEL else selected
+
+        /**
+         * The text of a [TRANSCRIBE_MODEL] answer, from its
+         * "audioTranscription.text" parts.
+         *
+         * Returns "" ONLY for silence: an answer that finished normally
+         * ("STOP") and is well formed, with no words in it (Google then
+         * sends no parts at all). Anything else is a failed transcription
+         * and is thrown as retryable (TRANSCRIPTION_FAILED): no answer, a
+         * blocked or cut-off one, or parts in an unexpected shape. A
+         * recording marked as silent is never tried again, so only real
+         * silence may be reported as such.
+         */
+        fun readTranscription(
+            response: JSONObject
+        ): String {
+
+            val candidate =
+                response.optJSONArray("candidates")?.optJSONObject(0)
+                    ?: throw failedTranscription(
+                        "no answer" + response.optJSONObject("promptFeedback")
+                            ?.optString("blockReason")
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { " (blocked: $it)" }
+                            .orEmpty()
+                    )
+
+            val finishReason =
+                candidate.optString("finishReason")
+
+            if (finishReason != "STOP") {
+                throw failedTranscription("the answer ended with ${finishReason.ifEmpty { "no reason" }}")
+            }
+
+            // Finished normally with nothing in it: nothing was said.
+            val parts =
+                candidate.optJSONObject("content")?.optJSONArray("parts")
+                    ?: return ""
+
+            val texts =
+                mutableListOf<String>()
+
+            for (index in 0 until parts.length()) {
+
+                val part =
+                    parts.optJSONObject(index)
+                        ?: throw failedTranscription("an unexpected answer")
+
+                if (part.optBoolean("thought")) {
+                    continue
+                }
+
+                val transcription =
+                    part.optJSONObject("audioTranscription")
+                        ?: throw failedTranscription("an unexpected answer")
+
+                texts += transcription.optString("text")
+            }
+
+            return texts.joinToString(" ").trim()
+        }
+
+        /**
+         * The two-step flow keeps the transcript exactly as the
+         * transcription model returned it, not the extraction model's copy
+         * of it. Speech was already found in step 1 (silence never reaches
+         * step 2), so the extraction model cannot turn it into "no speech".
+         */
+        fun useRawTranscript(
+            result: JSONObject,
+            transcript: String
+        ): JSONObject =
+            result
+                .put("speech_detected", true)
+                .put("transcript", transcript)
+
+        private fun failedTranscription(
+            reason: String
+        ): GeminiException =
+            GeminiException(
+                "Transcription failed: $reason",
+                FailureReason.TRANSCRIPTION_FAILED,
+                retryable = true
+            )
 
         private const val BASE_URL =
             "https://generativelanguage.googleapis.com"

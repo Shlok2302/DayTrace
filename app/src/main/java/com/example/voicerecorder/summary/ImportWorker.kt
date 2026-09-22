@@ -100,7 +100,9 @@ class ImportWorker(
         output: File
     ): Boolean =
         suspendCancellableCoroutine { continuation ->
-            Mp3Converter.convert(input, output) { success ->
+            // An import becomes a DayTrace recording and is stored and
+            // uploaded like one, so it follows the same quality setting.
+            Mp3Converter.convert(input, output, AppSettings(applicationContext).recordingQuality) { success ->
                 if (continuation.isActive) continuation.resume(success)
             }
         }

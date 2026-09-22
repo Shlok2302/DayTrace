@@ -7,6 +7,13 @@
     <!-- Foreground service permission -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
+    <!--
+        The recording service runs as a "microphone" foreground service.
+        From Android 14 the type needs its own permission as well, and
+        without it starting the service throws instead of recording.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
     <!-- Internet permission (Gemini summary) -->
     <uses-permission android:name="android.permission.INTERNET" />
 

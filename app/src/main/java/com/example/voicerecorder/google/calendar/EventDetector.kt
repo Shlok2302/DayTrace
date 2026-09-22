@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.voicerecorder.BuildConfig
 import com.example.voicerecorder.google.EventSuggestion
 import com.example.voicerecorder.settings.AppSettings
+import com.example.voicerecorder.summary.GeminiSummarizer
 import com.example.voicerecorder.summary.Note
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -82,7 +83,8 @@ class EventDetector(
                 )
 
         val connection =
-            (URL("$BASE_URL/v1beta/models/${settings.geminiModel}:generateContent").openConnection() as HttpURLConnection).apply {
+            // A text model, even while "3.5 Transcribe" is selected: that one cannot answer in JSON.
+            (URL("$BASE_URL/v1beta/models/${GeminiSummarizer.textModel(settings.geminiModel)}:generateContent").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 20_000
                 readTimeout = 60_000

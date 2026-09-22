@@ -115,7 +115,8 @@ class AppSettings(
             linkedMapOf(
                 GeminiSummarizer.DEFAULT_MODEL to "3.5 Flash Lite",
                 "gemini-3.5-flash" to "3.5 Flash",
-                "gemini-flash-latest" to "Flash latest"
+                "gemini-flash-latest" to "Flash latest",
+                GeminiSummarizer.TRANSCRIBE_MODEL to "3.5 Transcribe"
             )
     }
 }

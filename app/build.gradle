@@ -13,12 +13,12 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace 'com.example.voicerecorder'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.example.voicerecorder"
         minSdk 26
-        targetSdk 33
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -56,8 +56,17 @@ dependencies {
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-    // 8.1.8 ships 16 KB page aligned native libraries (7.1.6 did not)
-    implementation 'dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.8'
+    /*
+     * 8.1.8 ships 16 KB page aligned native libraries (7.1.6 did not).
+     *
+     * The "audio" package, not "full": DayTrace runs exactly one FFmpeg
+     * command, which decodes an audio file and encodes MP3 with
+     * libmp3lame (Mp3Converter). Every decoder it needs is built into
+     * libavcodec, and libmp3lame is the only external encoder, so the
+     * video codecs in "full" were never reachable. Same version and the
+     * same 16 KB alignment; about 10 MB smaller per ABI.
+     */
+    implementation 'dev.ffmpegkit-maintained:ffmpeg-kit-audio:8.1.8'
     implementation 'com.arthenica:smart-exception-java:0.2.1'
 
     // Background job for the Gemini summary (2.8.x supports compileSdk 33)

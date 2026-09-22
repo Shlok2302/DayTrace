@@ -402,7 +402,8 @@ class RecordingService : Service() {
 
         Mp3Converter.convert(
             inputFile,
-            temporaryMp3
+            temporaryMp3,
+            AppSettings(this).recordingQuality
         ) { success ->
 
             Log.d(
