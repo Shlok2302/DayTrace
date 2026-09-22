@@ -12,6 +12,13 @@ import com.example.voicerecorder.google.calendar.CalendarApi
 import com.example.voicerecorder.google.calendar.EventDetectionWorker
 import com.example.voicerecorder.google.calendar.GoogleSyncWorker
 import com.example.voicerecorder.google.calendar.RestCalendarApi
+import com.example.voicerecorder.google.docs.DocsApi
+import com.example.voicerecorder.google.docs.DocsAppender
+import com.example.voicerecorder.google.docs.RestDocsApi
+import com.example.voicerecorder.google.tasks.RestTasksApi
+import com.example.voicerecorder.google.tasks.TaskAdder
+import com.example.voicerecorder.google.tasks.TaskSyncWorker
+import com.example.voicerecorder.google.tasks.TasksApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -96,12 +103,26 @@ class GoogleIntegrationManager(
         settings.setEnabled(service, true)
 
         when (service) {
+
             GoogleService.CALENDAR -> {
                 useMainCalendarIfNoneChosen()
                 // Events confirmed before, waiting for this: send them now.
                 resumePending()
                 EventDetectionWorker.enqueue(app)
             }
+
+            GoogleService.TASKS -> {
+                useMainTaskListIfNoneChosen()
+                // Tasks confirmed before, waiting for this: send them now.
+                resumePendingTasks()
+                // Which Remember notes are to-dos is the same question the
+                // calendar asks, and the same answer is reused.
+                EventDetectionWorker.enqueue(app)
+            }
+
+            // Documents are only ever made and appended to when the user
+            // asks, so there is nothing to catch up on here.
+            GoogleService.DOCS -> Unit
         }
 
         notifyChanged(app)
@@ -138,10 +159,23 @@ class GoogleIntegrationManager(
 
         val cancelled =
             when (service) {
+
                 GoogleService.CALENDAR -> {
                     GoogleSyncWorker.cancel(app)
                     store.clearPending()
                 }
+
+                GoogleService.TASKS -> {
+                    TaskSyncWorker.cancel(app)
+                    store.clearPendingTasks()
+                }
+
+                /*
+                 * The documents themselves stay in the user's Google Drive,
+                 * and DayTrace keeps knowing which notes are already in them,
+                 * so reconnecting later does not write anything twice.
+                 */
+                GoogleService.DOCS -> 0
             }
 
         notifyChanged(app)
@@ -182,6 +216,18 @@ class GoogleIntegrationManager(
     fun calendarAdder(): CalendarAdder =
         CalendarAdder(calendarApi(), store)
 
+    fun tasksApi(): TasksApi =
+        RestTasksApi(GoogleRestClient(auth, GoogleService.TASKS.scopes))
+
+    fun taskAdder(): TaskAdder =
+        TaskAdder(tasksApi(), store)
+
+    fun docsApi(): DocsApi =
+        RestDocsApi(GoogleRestClient(auth, GoogleService.DOCS.scopes))
+
+    fun docsAppender(): DocsAppender =
+        DocsAppender(docsApi(), store)
+
     /** After reconnecting, or "Try again": the waiting events are sent again. */
     fun resumePending() {
 
@@ -204,6 +250,31 @@ class GoogleIntegrationManager(
         noteId: String
     ) {
         store.removePending(noteId)
+        notifyChanged(app)
+    }
+
+    /** After reconnecting, or "Try again": the waiting tasks are sent again. */
+    fun resumePendingTasks() {
+
+        val pending =
+            store.pendingTasks()
+
+        if (pending.isEmpty()) {
+            return
+        }
+
+        pending
+            .filter { it.state != PendingTaskAdd.STATE_WAITING }
+            .forEach { store.savePendingTask(it.copy(state = PendingTaskAdd.STATE_WAITING, problem = "")) }
+
+        TaskSyncWorker.enqueue(app)
+    }
+
+    /** Cancels one waiting task. The note is not changed. */
+    fun cancelPendingTask(
+        noteId: String
+    ) {
+        store.removePendingTask(noteId)
         notifyChanged(app)
     }
 
@@ -255,6 +326,22 @@ class GoogleIntegrationManager(
             }
     }
 
+    /** New tasks go to the account's main list until the user picks another. */
+    private suspend fun useMainTaskListIfNoneChosen() {
+
+        if (settings.taskListName != null) {
+            return
+        }
+
+        runCatching { tasksApi().lists() }
+            .getOrNull()
+            ?.firstOrNull()
+            ?.let {
+                settings.taskListId = it.id
+                settings.taskListName = it.name
+            }
+    }
+
     companion object {
 
         private const val USER_INFO_URL =
@@ -278,11 +365,21 @@ class GoogleIntegrationManager(
 
             thread {
                 runCatching {
-                    val manager = GoogleIntegrationManager(app)
+
+                    val manager =
+                        GoogleIntegrationManager(app)
+
                     if (manager.isConnected(GoogleService.CALENDAR)) {
                         EventDetectionWorker.enqueue(app)
                         if (manager.store.pending().any { it.state == PendingCalendarAdd.STATE_WAITING }) {
                             GoogleSyncWorker.enqueue(app)
+                        }
+                    }
+
+                    if (manager.isConnected(GoogleService.TASKS)) {
+                        EventDetectionWorker.enqueue(app)
+                        if (manager.store.pendingTasks().any { it.state == PendingTaskAdd.STATE_WAITING }) {
+                            TaskSyncWorker.enqueue(app)
                         }
                     }
                 }

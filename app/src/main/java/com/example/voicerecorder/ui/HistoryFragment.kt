@@ -39,6 +39,16 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
     private var recordings: List<SavedRecording> = emptyList()
 
     private val calendarFlow by lazy { CalendarFlow(this) { if (view != null) load() } }
+
+    private val taskFlow by lazy { TaskFlow(this) { if (view != null) load() } }
+
+    private val docsFlow by lazy { DocsFlow(this) { if (view != null) load() } }
+
+    private val sendToGoogle by lazy { SendToGoogle(this, calendarFlow, taskFlow, docsFlow) }
+
+    /** What Google knows about these notes, for "Send to Google". */
+    private var google: GoogleStates = GoogleStates.NONE
+
     private var entries: List<NoteEntry> = emptyList()
 
     private var month: YearMonth = YearMonth.now()
@@ -121,10 +131,11 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
 
         viewLifecycleOwner.lifecycleScope.launch {
 
-            val loaded =
-                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) }
+            val (loaded, states) =
+                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) to GoogleStates.load(requireContext()) }
 
             recordings = loaded
+            google = states
             entries = Notes.entries(loaded)
 
             // Open on the latest day that has notes, unless a date was asked for.
@@ -254,7 +265,7 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
                     entry,
                     onOpen = { open(it) },
                     onChanged = { if (view != null) load() },
-                    onCalendar = { calendarFlow.start(it) }
+                    onGoogle = { sendToGoogle.start(it, google) }
                 )
 
             val params =

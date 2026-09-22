@@ -10,6 +10,8 @@ import android.text.style.ImageSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -86,6 +88,9 @@ class DayTraceDialog(
     private var onPick: (Int) -> Unit = {}
     private var content: View? = null
     private var busy = false
+    private var inputValue: CharSequence? = null
+    private var inputHint: CharSequence? = null
+    private var onTyped: ((String) -> Unit)? = null
 
     fun tone(tone: Tone) = apply { this.tone = tone }
 
@@ -166,6 +171,21 @@ class DayTraceDialog(
     fun content(view: View) = apply { content = view }
 
     /**
+     * One line to type in, e.g. a task's title or the name of a new
+     * document. The main action gets what was typed; [onDone] runs
+     * instead of the main action's own click.
+     */
+    fun input(
+        value: CharSequence,
+        @StringRes hint: Int,
+        onDone: (String) -> Unit
+    ) = apply {
+        inputValue = value
+        inputHint = context.getString(hint)
+        onTyped = onDone
+    }
+
+    /**
      * "Working on it": a spinner instead of buttons, and it cannot be
      * closed by the user. The caller dismisses the returned dialog.
      */
@@ -191,7 +211,10 @@ class DayTraceDialog(
         view.findViewById<View>(R.id.callout).isVisible = !warning.isNullOrBlank()
         view.findViewById<TextView>(R.id.calloutText).text = warning
 
-        content?.let { custom ->
+        val field =
+            inputValue?.let { buildInput(it) }
+
+        (content ?: field)?.let { custom ->
             view.findViewById<android.widget.FrameLayout>(R.id.content).apply {
                 isVisible = true
                 addView(custom)
@@ -199,7 +222,7 @@ class DayTraceDialog(
         }
 
         bindChoices(view, dialog)
-        bindButtons(view, dialog)
+        bindButtons(view, dialog, field)
 
         view.findViewById<View>(R.id.btnClose).setOnClickListener { dialog.cancel() }
 
@@ -309,9 +332,31 @@ class DayTraceDialog(
         }
     }
 
+    /** The one-line field of [input], in the dialog's own style. */
+    private fun buildInput(
+        value: CharSequence
+    ): EditText =
+        EditText(context).apply {
+            setText(value)
+            hint = inputHint
+            setBackgroundResource(R.drawable.bg_input)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            textSize = 15f
+            setSingleLine()
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
+            setHintTextColor(ContextCompat.getColor(context, R.color.text_tertiary))
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSelection(text.length)
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
     private fun bindButtons(
         view: View,
-        dialog: Dialog
+        dialog: Dialog,
+        field: EditText?
     ) {
 
         val buttons =
@@ -334,8 +379,10 @@ class DayTraceDialog(
                 if (primaryArrow) withArrow(main.label) else main.label
 
             primaryButton.setOnClickListener {
+                // With a field, the main action is "use what was typed".
+                val typed = field?.text?.toString()
                 dialog.dismiss()
-                main.onClick()
+                if (typed != null && onTyped != null) onTyped?.invoke(typed) else main.onClick()
             }
         }
 

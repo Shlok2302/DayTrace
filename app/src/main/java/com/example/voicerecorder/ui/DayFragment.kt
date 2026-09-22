@@ -34,10 +34,16 @@ class DayFragment : Fragment(R.layout.fragment_day) {
 
     private var entries: List<NoteEntry> = emptyList()
 
-    /** Google Calendar suggestions and events for the cards. */
-    private var calendar: CalendarStates = CalendarStates.NONE
+    /** Google suggestions, events and tasks for the cards. */
+    private var google: GoogleStates = GoogleStates.NONE
 
     private val calendarFlow by lazy { CalendarFlow(this) { if (view != null) load() } }
+
+    private val taskFlow by lazy { TaskFlow(this) { if (view != null) load() } }
+
+    private val docsFlow by lazy { DocsFlow(this) { if (view != null) load() } }
+
+    private val sendToGoogle by lazy { SendToGoogle(this, calendarFlow, taskFlow, docsFlow) }
 
     private var selected: LocalDate = LocalDate.now()
 
@@ -76,11 +82,11 @@ class DayFragment : Fragment(R.layout.fragment_day) {
 
         viewLifecycleOwner.lifecycleScope.launch {
 
-            val (loaded, calendarStates) =
-                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) to CalendarStates.load(requireContext()) }
+            val (loaded, states) =
+                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) to GoogleStates.load(requireContext()) }
 
             entries = Notes.entries(loaded)
-            calendar = calendarStates
+            google = states
 
             render()
         }
@@ -123,8 +129,8 @@ class DayFragment : Fragment(R.layout.fragment_day) {
                     entry,
                     onOpen = { open(it) },
                     onChanged = { if (view != null) load() },
-                    calendar = calendar,
-                    onCalendar = { calendarFlow.start(it) }
+                    google = google,
+                    onGoogle = { sendToGoogle.start(it, google) }
                 )
 
             val params =

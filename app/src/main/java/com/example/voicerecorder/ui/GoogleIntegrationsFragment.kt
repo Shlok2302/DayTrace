@@ -5,11 +5,13 @@ import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.R
+import com.example.voicerecorder.google.DocumentLink
 import com.example.voicerecorder.google.GoogleConsent
 import com.example.voicerecorder.google.GoogleIntegrationManager
 import com.example.voicerecorder.google.GoogleService
 import com.example.voicerecorder.google.GoogleSettings
 import com.example.voicerecorder.google.PendingCalendarAdd
+import com.example.voicerecorder.google.PendingTaskAdd
 import com.example.voicerecorder.google.ServiceState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -32,10 +34,22 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
 
     private val calendar by lazy { CalendarFlow(this) { refresh() } }
 
+    private val tasks by lazy { TaskFlow(this) { refresh() } }
+
+    private val docs by lazy { DocsFlow(this) { refresh() } }
+
     /** Asked from Google when the page opens; null until then. */
     private var calendarState: ServiceState? = null
 
+    private var tasksState: ServiceState? = null
+
+    private var docsState: ServiceState? = null
+
     private var waiting: List<PendingCalendarAdd> = emptyList()
+
+    private var waitingTasks: List<PendingTaskAdd> = emptyList()
+
+    private var documents: List<DocumentLink> = emptyList()
 
     override fun onViewCreated(
         view: View,
@@ -60,11 +74,19 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
 
-            waiting = withContext(Dispatchers.IO) { manager.store.pending() }
+            withContext(Dispatchers.IO) {
+                val store = manager.store
+                waiting = store.pending()
+                waitingTasks = store.pendingTasks()
+                documents = store.documents()
+            }
+
             renderRows()
 
             if (checkGoogle) {
                 calendarState = manager.state(GoogleService.CALENDAR)
+                tasksState = manager.state(GoogleService.TASKS)
+                docsState = manager.state(GoogleService.DOCS)
                 renderRows()
             }
         }
@@ -156,12 +178,123 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
             )
         }
 
+        // Google Tasks ------------------------------------------------------
+
+        val tasksOn =
+            manager.isConnected(GoogleService.TASKS)
+
+        val tasksNeedReconnect =
+            tasksOn && tasksState == ServiceState.NEEDS_RECONNECT
+
+        val taskListName =
+            settings.taskListName ?: getString(R.string.google_task_list_default)
+
+        rows += SettingsRow.Open(
+            icon = R.drawable.ic_check_circle,
+            title = getString(R.string.google_tasks),
+            subtitle = when {
+                !tasksOn -> getString(R.string.google_tasks_subtitle_off)
+                tasksNeedReconnect -> getString(R.string.google_tasks_subtitle_reconnect)
+                tasksState == ServiceState.CANNOT_CHECK -> getString(R.string.google_tasks_subtitle_unchecked)
+                else -> getString(R.string.google_tasks_subtitle_on, taskListName)
+            },
+            value = getString(
+                when {
+                    !tasksOn -> R.string.google_connect
+                    tasksNeedReconnect -> R.string.google_reconnect
+                    else -> R.string.google_connected
+                }
+            ),
+            onClick = { openTasks(tasksOn, tasksNeedReconnect, taskListName) }
+        )
+
+        if (tasksOn) {
+
+            rows += SettingsRow.Open(
+                icon = R.drawable.ic_document,
+                title = getString(R.string.google_task_list_choose),
+                subtitle = getString(R.string.google_task_list_choose_subtitle),
+                value = taskListName,
+                onClick = {
+                    tasks.chooseTaskList(settings.taskListId) {
+                        settings.taskListId = it.id
+                        settings.taskListName = it.name
+                        renderRows()
+                    }
+                }
+            )
+
+            rows += SettingsRow.Toggle(
+                icon = R.drawable.ic_text,
+                title = getString(R.string.google_task_context),
+                subtitle = getString(R.string.google_task_context_subtitle),
+                checked = settings.taskIncludeContext,
+                onChange = {
+                    settings.taskIncludeContext = it
+                    renderRows()
+                }
+            )
+        }
+
+        // Google Docs -------------------------------------------------------
+
+        val docsOn =
+            manager.isConnected(GoogleService.DOCS)
+
+        val docsNeedReconnect =
+            docsOn && docsState == ServiceState.NEEDS_RECONNECT
+
+        rows += SettingsRow.Open(
+            icon = R.drawable.ic_document,
+            title = getString(R.string.google_docs),
+            subtitle = when {
+                !docsOn -> getString(R.string.google_docs_subtitle_off)
+                docsNeedReconnect -> getString(R.string.google_docs_subtitle_reconnect)
+                docsState == ServiceState.CANNOT_CHECK -> getString(R.string.google_docs_subtitle_unchecked)
+                documents.isEmpty() -> getString(R.string.google_docs_subtitle_none)
+                else -> documents.joinToString(", ") { it.title }
+            },
+            value = getString(
+                when {
+                    !docsOn -> R.string.google_connect
+                    docsNeedReconnect -> R.string.google_reconnect
+                    else -> R.string.google_connected
+                }
+            ),
+            onClick = { openDocs(docsOn, docsNeedReconnect) }
+        )
+
+        if (docsOn && documents.isNotEmpty()) {
+            rows += SettingsRow.Open(
+                icon = R.drawable.ic_link,
+                title = getString(R.string.google_docs_documents),
+                subtitle = getString(R.string.google_docs_documents_subtitle),
+                value = documents.size.toString(),
+                onClick = { showDocuments() }
+            )
+        }
+
+        // Waiting -----------------------------------------------------------
+
         if (waiting.isNotEmpty()) {
             rows += SettingsRow.Open(
                 icon = R.drawable.ic_refresh,
                 title = getString(R.string.google_waiting),
                 subtitle = resources.getQuantityString(R.plurals.google_waiting_subtitle, waiting.size, waiting.size),
                 onClick = { showWaiting() }
+            )
+        }
+
+        if (waitingTasks.isNotEmpty()) {
+            rows += SettingsRow.Open(
+                icon = R.drawable.ic_refresh,
+                title = getString(R.string.google_tasks_waiting),
+                subtitle = resources.getQuantityString(
+                    R.plurals.google_waiting_subtitle,
+                    waitingTasks.size,
+                    waitingTasks.size
+                ),
+                onClick = { showWaitingTasks() }
             )
         }
 
@@ -206,11 +339,18 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
         email: String
     ) {
 
+        val connected =
+            listOfNotNull(
+                getString(R.string.google_calendar).takeIf { manager.isConnected(GoogleService.CALENDAR) },
+                getString(R.string.google_tasks).takeIf { manager.isConnected(GoogleService.TASKS) },
+                getString(R.string.google_docs).takeIf { manager.isConnected(GoogleService.DOCS) }
+            )
+
         val services =
-            if (manager.isConnected(GoogleService.CALENDAR)) {
-                getString(R.string.google_account_services, getString(R.string.google_calendar))
-            } else {
+            if (connected.isEmpty()) {
                 getString(R.string.google_account_no_services)
+            } else {
+                getString(R.string.google_account_services, connected.joinToString(", "))
             }
 
         DayTraceDialog(requireContext())
@@ -246,6 +386,8 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
                 manager.disconnectAccount()
 
             calendarState = null
+            tasksState = null
+            docsState = null
             refresh(checkGoogle = false)
 
             if (revoked) {
@@ -323,6 +465,168 @@ class GoogleIntegrationsFragment : SettingsPageFragment() {
                 Toast.makeText(requireContext(), R.string.google_calendar_disconnected, Toast.LENGTH_SHORT).show()
             }
             .secondary(R.string.cancel)
+            .show()
+    }
+
+    // Google Tasks ----------------------------------------------------------
+
+    private fun openTasks(
+        connected: Boolean,
+        needsReconnect: Boolean,
+        taskListName: String
+    ) {
+        when {
+            !connected -> tasks.askToConnect { tasksConnected() }
+            needsReconnect -> tasks.reconnect { tasksConnected() }
+            else -> DayTraceDialog(requireContext())
+                .icon(R.drawable.ic_check_circle)
+                .title(R.string.google_tasks)
+                .message(getString(R.string.google_tasks_settings_detail, taskListName))
+                .primary(R.string.close)
+                .extra(R.string.google_disconnect_tasks, destructive = true) { confirmDisconnectTasks() }
+                .show()
+        }
+    }
+
+    private fun tasksConnected() {
+
+        tasksState = ServiceState.CONNECTED
+        refresh(checkGoogle = false)
+
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.SUCCESS)
+            .icon(R.drawable.ic_check_circle)
+            .title(R.string.google_tasks_connected_title)
+            .message(
+                getString(
+                    R.string.google_tasks_connected_detail,
+                    manager.settings.taskListName ?: getString(R.string.google_task_list_default)
+                )
+            )
+            .primary(R.string.ok)
+            .show()
+    }
+
+    private fun confirmDisconnectTasks() {
+
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.DANGER)
+            .icon(R.drawable.ic_check_circle)
+            .title(R.string.google_disconnect_tasks_title)
+            .message(R.string.google_disconnect_tasks_detail)
+            .warning(
+                if (waitingTasks.isEmpty()) null
+                else resources.getQuantityString(R.plurals.google_disconnect_cancels, waitingTasks.size, waitingTasks.size)
+            )
+            .primary(R.string.google_disconnect) {
+                manager.disconnect(GoogleService.TASKS)
+                tasksState = ServiceState.OFF
+                refresh(checkGoogle = false)
+                Toast.makeText(requireContext(), R.string.google_tasks_disconnected, Toast.LENGTH_SHORT).show()
+            }
+            .secondary(R.string.cancel)
+            .show()
+    }
+
+    /** The tasks the user confirmed that are not in Google Tasks yet. */
+    private fun showWaitingTasks() {
+
+        val lines =
+            waitingTasks.joinToString("\n") { pending ->
+                val title = runCatching { JSONObject(pending.task).optString("title") }.getOrDefault("")
+                if (pending.dueText.isEmpty()) "• $title" else "• $title · ${pending.dueText}"
+            }
+
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.INFO)
+            .icon(R.drawable.ic_refresh)
+            .title(R.string.google_tasks_waiting)
+            .message(getString(R.string.google_tasks_waiting_detail, lines))
+            .primary(R.string.google_try_now) {
+                manager.resumePendingTasks()
+                refresh(checkGoogle = false)
+            }
+            .secondary(R.string.close)
+            .extra(R.string.google_cancel_waiting, destructive = true) {
+                val context = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    withContext(Dispatchers.IO) { manager.store.clearPendingTasks() }
+                    GoogleIntegrationManager.notifyChanged(context)
+                }
+            }
+            .show()
+    }
+
+    // Google Docs -----------------------------------------------------------
+
+    private fun openDocs(
+        connected: Boolean,
+        needsReconnect: Boolean
+    ) {
+        when {
+            !connected -> docs.askToConnect { docsConnected() }
+            needsReconnect -> docs.reconnect { docsConnected() }
+            else -> DayTraceDialog(requireContext())
+                .icon(R.drawable.ic_document)
+                .title(R.string.google_docs)
+                .message(R.string.google_docs_settings_detail)
+                .primary(R.string.close)
+                .extra(R.string.google_disconnect_docs, destructive = true) { confirmDisconnectDocs() }
+                .show()
+        }
+    }
+
+    private fun docsConnected() {
+
+        docsState = ServiceState.CONNECTED
+        refresh(checkGoogle = false)
+
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.SUCCESS)
+            .icon(R.drawable.ic_check_circle)
+            .title(R.string.google_docs_connected_title)
+            .message(R.string.google_docs_connected_detail)
+            .primary(R.string.ok)
+            .show()
+    }
+
+    private fun confirmDisconnectDocs() {
+
+        DayTraceDialog(requireContext())
+            .tone(DayTraceDialog.Tone.DANGER)
+            .icon(R.drawable.ic_document)
+            .title(R.string.google_disconnect_docs_title)
+            .message(R.string.google_disconnect_docs_detail)
+            .primary(R.string.google_disconnect) {
+                manager.disconnect(GoogleService.DOCS)
+                docsState = ServiceState.OFF
+                refresh(checkGoogle = false)
+                Toast.makeText(requireContext(), R.string.google_docs_disconnected, Toast.LENGTH_SHORT).show()
+            }
+            .secondary(R.string.cancel)
+            .show()
+    }
+
+    /** The documents DayTrace made, and a way into each one. */
+    private fun showDocuments() {
+
+        val made =
+            documents
+
+        DayTraceDialog(requireContext())
+            .icon(R.drawable.ic_document)
+            .title(R.string.google_docs_documents)
+            .choices(
+                made.map {
+                    DayTraceDialog.Choice(
+                        it.title,
+                        getString(R.string.docs_made_on, Notes.formatDate(Notes.dateOf(it.createdAt))),
+                        R.drawable.ic_document
+                    )
+                },
+                null
+            ) { index -> docs.open(made[index]) }
+            .secondary(R.string.close)
             .show()
     }
 

@@ -21,6 +21,24 @@ enum class GoogleService(
             "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
             "https://www.googleapis.com/auth/calendar.events.owned"
         )
+    ),
+
+    /**
+     * See the task lists (to choose one) and add tasks. Google Tasks has
+     * no narrower write scope than "tasks", so this is the smallest one
+     * that can add a task at all.
+     */
+    TASKS(
+        listOf("https://www.googleapis.com/auth/tasks")
+    ),
+
+    /**
+     * "drive.file", not "documents": DayTrace may only open and change
+     * the documents it created itself, never the rest of the user's
+     * Drive. The Docs API accepts this scope for those documents.
+     */
+    DOCS(
+        listOf("https://www.googleapis.com/auth/drive.file")
     );
 
     companion object {
@@ -89,6 +107,47 @@ class GoogleSettings(
         get() = prefs.getInt(KEY_LENGTH, DEFAULT_LENGTH_MINUTES)
         set(value) = prefs.edit().putInt(KEY_LENGTH, value).apply()
 
+    // Google Tasks ----------------------------------------------------------
+
+    /** Where new tasks go; [DEFAULT_LIST] until a list is chosen. */
+    var taskListId: String
+        get() = prefs.getString(KEY_TASK_LIST_ID, null) ?: DEFAULT_LIST
+        set(value) = prefs.edit().putString(KEY_TASK_LIST_ID, value).apply()
+
+    /** The chosen task list's name, for the screens. */
+    var taskListName: String?
+        get() = prefs.getString(KEY_TASK_LIST_NAME, null)
+        set(value) = prefs.edit().putString(KEY_TASK_LIST_NAME, value).apply()
+
+    /**
+     * Put the note's own words under the task title, so the task carries
+     * the context the recording gave it.
+     */
+    var taskIncludeContext: Boolean
+        get() = prefs.getBoolean(KEY_TASK_CONTEXT, true)
+        set(value) = prefs.edit().putBoolean(KEY_TASK_CONTEXT, value).apply()
+
+    // Google Docs -----------------------------------------------------------
+
+    /**
+     * The document a category is sent to, or null when none was chosen
+     * yet. Kept per category ("Idea", "Thoughts", ...), so ideas and
+     * thoughts can go to different documents.
+     */
+    fun documentId(
+        category: String
+    ): String? =
+        prefs.getString(KEY_DOC_ID + category, null)
+
+    fun setDocumentId(
+        category: String,
+        documentId: String?
+    ) {
+        prefs.edit().apply {
+            if (documentId == null) remove(KEY_DOC_ID + category) else putString(KEY_DOC_ID + category, documentId)
+        }.apply()
+    }
+
     /** Forgets the account and every service, for "Disconnect". */
     fun clear() {
         prefs.edit().clear().apply()
@@ -104,8 +163,15 @@ class GoogleSettings(
         private const val KEY_CALENDAR_NAME = "calendar_name"
         private const val KEY_REMINDER = "event_reminder_minutes"
         private const val KEY_LENGTH = "event_length_minutes"
+        private const val KEY_TASK_LIST_ID = "task_list_id"
+        private const val KEY_TASK_LIST_NAME = "task_list_name"
+        private const val KEY_TASK_CONTEXT = "task_include_context"
+        private const val KEY_DOC_ID = "document_id_"
 
         const val PRIMARY = "primary"
+
+        /** Google Tasks' own name for the list every account starts with. */
+        const val DEFAULT_LIST = "@default"
 
         const val REMINDER_CALENDAR_DEFAULT = -1
         const val REMINDER_NONE = 0

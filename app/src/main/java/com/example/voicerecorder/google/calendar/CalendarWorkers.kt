@@ -38,7 +38,12 @@ class EventDetectionWorker(
         val manager =
             GoogleIntegrationManager(applicationContext)
 
-        if (!manager.isConnected(GoogleService.CALENDAR)) {
+        /*
+         * "Is this note an event or a to-do?" is one question with one
+         * answer, and both integrations use it, so it is asked when
+         * either of them is connected.
+         */
+        if (!manager.isConnected(GoogleService.CALENDAR) && !manager.isConnected(GoogleService.TASKS)) {
             return Result.success()
         }
 
@@ -218,7 +223,8 @@ class GoogleSyncWorker(
 
 /**
  * New notes were saved (SummaryWorker's "complete" broadcast, which stays
- * inside the app): check them for events, if Google Calendar is connected.
+ * inside the app): check them for events and to-dos, if Google Calendar
+ * or Google Tasks is connected.
  */
 class NewNotesReceiver : BroadcastReceiver() {
 
@@ -226,7 +232,11 @@ class NewNotesReceiver : BroadcastReceiver() {
         context: Context,
         intent: Intent
     ) {
-        if (GoogleIntegrationManager(context).isConnected(GoogleService.CALENDAR)) {
+
+        val manager =
+            GoogleIntegrationManager(context)
+
+        if (manager.isConnected(GoogleService.CALENDAR) || manager.isConnected(GoogleService.TASKS)) {
             EventDetectionWorker.enqueue(context)
         }
     }

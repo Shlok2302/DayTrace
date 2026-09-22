@@ -13,6 +13,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.R
 import com.example.voicerecorder.google.GoogleIntegrationManager
 import com.example.voicerecorder.google.PendingCalendarAdd
+import com.example.voicerecorder.google.PendingTaskAdd
+import com.example.voicerecorder.google.tasks.TaskDraft
 import com.example.voicerecorder.reminders.AppNotifications
 import com.example.voicerecorder.reminders.ReminderTimes
 import com.example.voicerecorder.settings.AppSettings
@@ -31,6 +33,15 @@ import java.time.LocalDateTime
 class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
 
     private val calendarFlow by lazy { CalendarFlow(this) { view?.let(::load) } }
+
+    private val taskFlow by lazy { TaskFlow(this) { view?.let(::load) } }
+
+    private val docsFlow by lazy { DocsFlow(this) { view?.let(::load) } }
+
+    private val sendToGoogle by lazy { SendToGoogle(this, calendarFlow, taskFlow, docsFlow) }
+
+    /** What Google knows about this note, as of the last load. */
+    private var google: GoogleStates = GoogleStates.NONE
 
     override fun onViewCreated(
         view: View,
@@ -63,12 +74,14 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
             val entry =
                 Notes.entry(loaded, noteId) ?: return@launch
 
-            val (audioExists, calendar) =
+            val (audioExists, states) =
                 withContext(Dispatchers.IO) {
-                    audioExists(entry.recording.audioUri) to CalendarStates.load(requireContext())
+                    audioExists(entry.recording.audioUri) to GoogleStates.load(requireContext())
                 }
 
-            bind(view, entry, audioExists, calendar)
+            google = states
+
+            bind(view, entry, audioExists, states)
         }
     }
 
@@ -76,7 +89,7 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
         view: View,
         entry: NoteEntry,
         audioExists: Boolean,
-        calendar: CalendarStates
+        states: GoogleStates
     ) {
 
         val style =
@@ -109,7 +122,8 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
 
         bindBin(view, entry)
         bindReminder(view, entry)
-        bindCalendar(view, entry, calendar)
+        bindCalendar(view, entry, states.calendar)
+        bindTask(view, entry, states.tasks)
 
         view.findViewById<View>(R.id.btnMore).setOnClickListener { anchor ->
             showMenu(anchor, entry)
@@ -266,6 +280,97 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
         }
     }
 
+    /**
+     * Google Tasks: the to-do DayTrace suggests, or the task that was
+     * added. Completing the note here never changes the Google task.
+     */
+    private fun bindTask(
+        view: View,
+        entry: NoteEntry,
+        tasks: TaskStates
+    ) {
+
+        val card = view.findViewById<View>(R.id.taskCard)
+        val status = view.findViewById<TextView>(R.id.tvTaskStatus)
+        val detail = view.findViewById<TextView>(R.id.tvTaskDetail)
+        val button = view.findViewById<TextView>(R.id.btnTask)
+        val skip = view.findViewById<View>(R.id.btnTaskSkip)
+
+        val link = tasks.links[entry.id]
+        val pending = tasks.pending[entry.id]
+        val suggested = if (entry.note.isDeleted) null else tasks.suggestedDraft(entry)
+
+        card.isVisible = link != null || (!entry.note.isDeleted && (pending != null || suggested != null))
+        skip.isVisible = false
+
+        if (!card.isVisible) {
+            return
+        }
+
+        /*
+         * Done or deleted in DayTrace, but it has a Google task: say
+         * plainly that the task in Google Tasks was left alone. DayTrace
+         * never ticks off or deletes anything in the user's account.
+         */
+        if (entry.note.isDeleted && link != null) {
+            status.setText(R.string.task_done_locally_title)
+            detail.setText(R.string.task_done_locally_detail)
+            button.setText(R.string.task_open)
+            button.setOnClickListener { taskFlow.open(link) }
+            return
+        }
+
+        when {
+            link != null -> {
+                status.setText(R.string.task_card_added)
+                detail.text =
+                    if (link.dueText.isEmpty()) {
+                        getString(R.string.task_card_added_detail, link.taskListName)
+                    } else {
+                        getString(R.string.task_card_added_detail_due, link.dueText, link.taskListName)
+                    }
+                button.setText(R.string.task_open)
+                button.setOnClickListener { taskFlow.open(link) }
+            }
+
+            pending != null -> {
+                when (pending.state) {
+                    PendingTaskAdd.STATE_RECONNECT -> {
+                        status.setText(R.string.google_error_reconnect_title)
+                        detail.setText(R.string.task_card_reconnect_detail)
+                        button.setText(R.string.google_reconnect)
+                    }
+                    PendingTaskAdd.STATE_FAILED -> {
+                        status.setText(R.string.google_error_task_title)
+                        detail.setText(R.string.task_card_failed_detail)
+                        button.setText(R.string.task_try_again)
+                    }
+                    else -> {
+                        status.setText(R.string.task_waiting_title)
+                        detail.setText(R.string.task_card_waiting_detail)
+                        button.setText(R.string.google_try_now)
+                    }
+                }
+                button.setOnClickListener { taskFlow.start(entry) }
+            }
+
+            suggested != null -> {
+                status.setText(
+                    if (suggested.verdict == TaskDraft.Verdict.TASK) {
+                        R.string.task_preview_task
+                    } else {
+                        R.string.task_preview_maybe
+                    }
+                )
+                detail.text = TaskText.deadline(requireContext(), suggested)
+                button.setText(R.string.task_review)
+                button.setOnClickListener { taskFlow.start(entry) }
+                skip.isVisible = true
+                skip.setOnClickListener { taskFlow.skip(entry) }
+            }
+        }
+    }
+
     private fun showMenu(
         anchor: View,
         entry: NoteEntry
@@ -279,9 +384,7 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
                 menu.add(0, 2, 1, R.string.restore)
                 menu.add(0, 3, 2, R.string.delete_forever)
             } else {
-                if (entry.note.category == com.example.voicerecorder.summary.GeminiSummarizer.REMEMBER) {
-                    menu.add(0, 5, 2, R.string.calendar_add_to)
-                }
+                menu.add(0, 5, 2, R.string.send_to_google)
                 menu.add(0, 4, 3, R.string.delete)
             }
 
@@ -293,7 +396,7 @@ class NoteDetailFragment : Fragment(R.layout.fragment_note_detail) {
                     4 -> NoteCards.run(anchor, R.string.moved_to_bin, ::close) { context ->
                         NoteActions.moveToBin(context, entry.id, done = false)
                     }
-                    5 -> calendarFlow.start(entry)
+                    5 -> sendToGoogle.start(entry, google)
                 }
                 true
             }

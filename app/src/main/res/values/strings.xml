@@ -318,7 +318,7 @@
 
     <!-- Google integrations -->
     <string name="settings_google">Google Integrations</string>
-    <string name="settings_google_subtitle">Google Calendar and your Google account</string>
+    <string name="settings_google_subtitle">Calendar, Tasks, Docs and your Google account</string>
     <string name="settings_google_page_subtitle">Send notes to Google, only when you say so.</string>
     <string name="google_account">Google Account</string>
     <string name="google_account_not_connected">Not connected</string>
@@ -499,5 +499,150 @@
     <string name="calendar_pick_date">Date of the event</string>
     <string name="calendar_pick_start">Starts at</string>
     <string name="calendar_pick_end">Ends at</string>
+    <!-- ============ Google Tasks ============ -->
+
+    <string name="google_tasks">Google Tasks</string>
+    <string name="google_tasks_subtitle_off">Send to-dos from your Remember notes to Google Tasks.</string>
+    <string name="google_tasks_subtitle_on">Tasks go to %1$s.</string>
+    <string name="google_tasks_subtitle_reconnect">Google needs you to connect again.</string>
+    <string name="google_tasks_subtitle_unchecked">Connected. DayTrace couldn\'t reach Google to check.</string>
+    <string name="google_tasks_connect_title">Connect Google Tasks</string>
+    <string name="google_tasks_connect_detail">DayTrace will ask Google for one thing: to see your task lists and add tasks to them.</string>
+    <string name="google_tasks_connect_note">Nothing is added without your OK.</string>
+    <string name="google_tasks_connected_title">Google Tasks is connected</string>
+    <string name="google_tasks_connected_detail">New to-dos can be sent to %1$s. DayTrace will suggest it; you decide each time.</string>
+    <string name="google_tasks_settings_detail">To-dos you send go to %1$s.</string>
+    <string name="google_disconnect_tasks">Disconnect Google Tasks</string>
+    <string name="google_disconnect_tasks_title">Disconnect Google Tasks?</string>
+    <string name="google_disconnect_tasks_detail">DayTrace stops suggesting tasks. Tasks already in Google Tasks stay there, and your notes are not changed.</string>
+    <string name="google_tasks_disconnected">Google Tasks disconnected</string>
+    <string name="google_task_list_choose">Task list</string>
+    <string name="google_task_list_choose_subtitle">Where new tasks are added.</string>
+    <string name="google_choose_task_list_title">Choose a task list</string>
+    <string name="google_choose_task_list_message">New tasks from DayTrace go here.</string>
+    <string name="google_task_list_default">Your main list</string>
+    <string name="google_loading_task_lists">Reading your task lists</string>
+    <string name="google_task_context">Include the note</string>
+    <string name="google_task_context_subtitle">Put the note\'s own words under the task title.</string>
+    <string name="google_tasks_waiting">Tasks waiting to be sent</string>
+    <string name="google_tasks_waiting_detail">These to-dos were confirmed but are not in Google Tasks yet:\n\n%1$s</string>
+
+    <string name="task_send_to">Send to Google Tasks</string>
+    <string name="task_preview_task">This looks like a to-do</string>
+    <string name="task_preview_maybe">This might be a to-do</string>
+    <string name="task_preview_event">This looks like a calendar event</string>
+    <string name="task_preview_event_note">DayTrace thinks this belongs in your calendar. You can still send it to Google Tasks.</string>
+    <string name="task_preview_removed">The task you added before is no longer in Google Tasks. You can send it again.</string>
+    <string name="task_add">Add</string>
+    <string name="task_edit">Edit</string>
+    <string name="task_skip">Skip</string>
+    <string name="task_skipped">DayTrace won\'t suggest this one again</string>
+    <string name="task_review">Review</string>
+    <string name="task_try_again">Try again</string>
+    <string name="task_adding">Adding to Google Tasks</string>
+    <string name="task_checking">Checking Google Tasks</string>
+    <string name="task_reading_note">Reading the note</string>
+    <string name="task_open">Open in Google Tasks</string>
+
+    <string name="task_label_title">Task</string>
+    <string name="task_label_deadline">Deadline</string>
+    <string name="task_label_list">List</string>
+    <string name="task_label_note">Note</string>
+    <string name="task_no_deadline">No deadline</string>
+    <string name="task_no_deadline_note">Nothing in the recording said when this is due, so the task gets no deadline.</string>
+    <string name="task_time_in_notes_note">Google Tasks only keeps the day, so \"%1$s\" is written into the task\'s note instead.</string>
+    <string name="task_day_worked_out_note">The day comes from \"%1$s\" and when the recording was made. Check it is right.</string>
+    <string name="task_not_checked_note">DayTrace couldn\'t read this note with AI, so only the note itself was used.</string>
+    <string name="task_pick_deadline">Due on</string>
+    <string name="task_field_title_hint">What has to be done?</string>
+
+    <string name="task_added_title">Added to Google Tasks</string>
+    <string name="task_added_detail">\"%1$s\" is now in %2$s.</string>
+    <string name="task_added_detail_due">\"%1$s\" is now in %2$s, due %3$s.</string>
+    <string name="task_already_title">Already in Google Tasks</string>
+    <string name="task_already_detail">\"%1$s\" was added on %2$s and is still in %3$s.</string>
+    <string name="task_queued_offline_title">Saved, waiting to go online</string>
+    <string name="task_queued_busy_title">Saved, Google is busy</string>
+    <string name="task_queued_detail">DayTrace will add it as soon as it can. Your note is safe either way.</string>
+    <string name="task_waiting_title">Waiting to be added</string>
+    <string name="task_waiting_detail">\"%1$s\" is confirmed and will be added to Google Tasks as soon as DayTrace can reach Google.</string>
+    <string name="task_waiting_cancel">Don\'t add it</string>
+    <string name="task_waiting_cancelled">It won\'t be added</string>
+    <string name="task_reconnect_pending_detail">\"%1$s\" is waiting, but Google needs you to connect again first.</string>
+    <string name="task_failed_pending_detail">Google refused to add \"%1$s\". You can try again, or leave it.</string>
+    <string name="task_card_added">In Google Tasks</string>
+    <string name="task_card_added_detail">Added to %1$s.</string>
+    <string name="task_card_added_detail_due">Due %1$s · %2$s</string>
+    <string name="task_card_waiting_detail">It will be added when DayTrace can reach Google.</string>
+    <string name="task_card_reconnect_detail">Connect Google again to add it.</string>
+    <string name="task_card_failed_detail">Google refused it. You can try again.</string>
+    <string name="task_chip_suggest">Add to Google Tasks</string>
+    <string name="task_chip_suggest_due">Add to Google Tasks · %1$s</string>
+    <string name="task_chip_added">In Google Tasks</string>
+    <string name="task_chip_waiting">Task waiting</string>
+    <string name="task_chip_reconnect">Task needs reconnect</string>
+    <string name="task_chip_failed">Task failed</string>
+    <string name="task_done_locally_title">Done in DayTrace</string>
+    <string name="task_done_locally_detail">The task in Google Tasks is left exactly as it is. DayTrace never ticks off or deletes anything in your Google account.</string>
+    <string name="google_error_task_title">Couldn\'t add the task</string>
+    <string name="google_error_task_list_title">That list isn\'t available</string>
+    <string name="google_error_task_list">DayTrace can\'t add to %1$s any more. It may have been deleted, or belong to another account.</string>
+
+    <!-- ============ Google Docs ============ -->
+
+    <string name="google_docs">Google Docs</string>
+    <string name="google_docs_subtitle_off">Collect ideas and thoughts in a Google document.</string>
+    <string name="google_docs_subtitle_none">Connected. No document yet.</string>
+    <string name="google_docs_subtitle_reconnect">Google needs you to connect again.</string>
+    <string name="google_docs_subtitle_unchecked">Connected. DayTrace couldn\'t reach Google to check.</string>
+    <string name="google_docs_connect_title">Connect Google Docs</string>
+    <string name="google_docs_connect_detail">DayTrace will ask Google to make documents and open only the ones it made itself. It can\'t see the rest of your Drive.</string>
+    <string name="google_docs_connect_note">Nothing is written without your OK.</string>
+    <string name="google_docs_connected_title">Google Docs is connected</string>
+    <string name="google_docs_connected_detail">You can now send an idea or a thought to a DayTrace document.</string>
+    <string name="google_docs_settings_detail">DayTrace writes only to the documents it made itself.</string>
+    <string name="google_disconnect_docs">Disconnect Google Docs</string>
+    <string name="google_disconnect_docs_title">Disconnect Google Docs?</string>
+    <string name="google_disconnect_docs_detail">DayTrace stops offering to send notes to documents. The documents stay in your Google Drive, and your notes are not changed.</string>
+    <string name="google_docs_disconnected">Google Docs disconnected</string>
+    <string name="google_docs_documents">DayTrace documents</string>
+    <string name="google_docs_documents_subtitle">The documents DayTrace made.</string>
+
+    <string name="docs_choose_title">Where should it go?</string>
+    <string name="docs_choose_message">\"%1$s\" will be added to the end of the document you pick.</string>
+    <string name="docs_choose_new">Make a new document</string>
+    <string name="docs_new_title">Make a document</string>
+    <string name="docs_new_message">DayTrace will make this document in your Google Drive and add the note to it.</string>
+    <string name="docs_new_hint">Name of the document</string>
+    <string name="docs_creating">Making the document</string>
+    <string name="docs_looking">Looking for your DayTrace documents</string>
+    <string name="docs_appending">Adding to the document</string>
+    <string name="docs_preview_title">Send to Google Docs</string>
+    <string name="docs_label_document">Document</string>
+    <string name="docs_label_entry">Added as</string>
+    <string name="docs_send">Send</string>
+    <string name="docs_added_title">Added to the document</string>
+    <string name="docs_added_detail">\"%1$s\" is now at the end of %2$s.</string>
+    <string name="docs_already_title">Already in that document</string>
+    <string name="docs_already_detail">\"%1$s\" is already in %2$s. Nothing was added again.</string>
+    <string name="docs_open">Open the document</string>
+    <string name="docs_gone_title">That document is gone</string>
+    <string name="docs_gone_detail">%1$s isn\'t in your Google Drive any more, so DayTrace has stopped offering it. You can make a new one.</string>
+    <string name="docs_no_documents_title">No document yet</string>
+    <string name="docs_no_documents_detail">Make one to start collecting your ideas and thoughts in Google Docs.</string>
+    <string name="docs_made_on">Made on %1$s</string>
+    <string name="google_error_docs_title">Couldn\'t add to the document</string>
+
+    <!-- Sending a note to Google, from the note menu -->
+
+    <string name="send_to_google">Send to Google</string>
+    <string name="send_to_google_message">Where should \"%1$s\" go?</string>
+    <string name="send_to_google_calendar_detail">For something you attend at a set time.</string>
+    <string name="send_to_google_tasks_detail">For something to do or finish.</string>
+    <string name="send_to_google_docs_detail">For an idea or a thought worth keeping.</string>
+    <string name="send_to_google_suggested">Suggested</string>
+    <string name="send_to_google_none_title">Connect Google first</string>
+    <string name="send_to_google_none_detail">Connect Google Calendar, Google Tasks or Google Docs under Settings, Google Integrations, to send notes there.</string>
+    <string name="send_to_google_open_settings">Open settings</string>
 
 </resources>
