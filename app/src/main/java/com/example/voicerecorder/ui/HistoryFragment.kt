@@ -37,6 +37,8 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
     private lateinit var inputSearch: EditText
 
     private var recordings: List<SavedRecording> = emptyList()
+
+    private val calendarFlow by lazy { CalendarFlow(this) { if (view != null) load() } }
     private var entries: List<NoteEntry> = emptyList()
 
     private var month: YearMonth = YearMonth.now()
@@ -246,7 +248,14 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         visible.forEach { entry ->
 
             val card =
-                NoteCards.historyCard(inflater, notes, entry, onOpen = { open(it) }, onChanged = { if (view != null) load() })
+                NoteCards.historyCard(
+                    inflater,
+                    notes,
+                    entry,
+                    onOpen = { open(it) },
+                    onChanged = { if (view != null) load() },
+                    onCalendar = { calendarFlow.start(it) }
+                )
 
             val params =
                 LinearLayout.LayoutParams(

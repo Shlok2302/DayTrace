@@ -114,4 +114,40 @@
 
     </LinearLayout>
 
+    <!-- Google Calendar: "Add to Google Calendar", or where the event is -->
+    <LinearLayout
+        android:id="@+id/calendarChip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_calendar_chip"
+        android:foreground="?attr/selectableItemBackground"
+        android:paddingStart="11dp"
+        android:paddingEnd="14dp"
+        android:paddingVertical="7dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/imgCalendarChip"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@null"
+            app:tint="@color/forest" />
+
+        <TextView
+            android:id="@+id/tvCalendarChip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:textColor="@color/forest"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="2" />
+
+    </LinearLayout>
+
 </LinearLayout>

@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.voicerecorder.MainActivity
 import com.example.voicerecorder.R
+import com.example.voicerecorder.google.GoogleIntegrationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,6 +33,11 @@ class DayFragment : Fragment(R.layout.fragment_day) {
     private lateinit var tvEmpty: TextView
 
     private var entries: List<NoteEntry> = emptyList()
+
+    /** Google Calendar suggestions and events for the cards. */
+    private var calendar: CalendarStates = CalendarStates.NONE
+
+    private val calendarFlow by lazy { CalendarFlow(this) { if (view != null) load() } }
 
     private var selected: LocalDate = LocalDate.now()
 
@@ -56,6 +62,9 @@ class DayFragment : Fragment(R.layout.fragment_day) {
         view.findViewById<View>(R.id.btnCalendar).setOnClickListener {
             (activity as? MainActivity)?.openHistory(selected)
         }
+
+        // An event added in the background (or a new suggestion) shows at once.
+        GoogleIntegrationManager.observe(requireContext(), viewLifecycleOwner) { if (this.view != null) load() }
     }
 
     override fun onResume() {
@@ -67,10 +76,11 @@ class DayFragment : Fragment(R.layout.fragment_day) {
 
         viewLifecycleOwner.lifecycleScope.launch {
 
-            val loaded =
-                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) }
+            val (loaded, calendarStates) =
+                withContext(Dispatchers.IO) { Notes.recordings(requireContext()) to CalendarStates.load(requireContext()) }
 
             entries = Notes.entries(loaded)
+            calendar = calendarStates
 
             render()
         }
@@ -107,7 +117,15 @@ class DayFragment : Fragment(R.layout.fragment_day) {
         dayEntries.forEach { entry ->
 
             val card =
-                NoteCards.dayCard(inflater, notes, entry, onOpen = { open(it) }, onChanged = { if (view != null) load() })
+                NoteCards.dayCard(
+                    inflater,
+                    notes,
+                    entry,
+                    onOpen = { open(it) },
+                    onChanged = { if (view != null) load() },
+                    calendar = calendar,
+                    onCalendar = { calendarFlow.start(it) }
+                )
 
             val params =
                 LinearLayout.LayoutParams(

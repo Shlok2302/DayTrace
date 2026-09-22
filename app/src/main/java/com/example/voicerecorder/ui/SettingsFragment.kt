@@ -62,6 +62,13 @@ class SettingsFragment : SettingsPageFragment() {
             ),
 
             SettingsRow.Open(
+                icon = R.drawable.ic_link,
+                title = getString(R.string.settings_google),
+                subtitle = getString(R.string.settings_google_subtitle),
+                onClick = { open(GoogleIntegrationsFragment()) }
+            ),
+
+            SettingsRow.Open(
                 icon = R.drawable.ic_shield,
                 title = getString(R.string.settings_privacy),
                 subtitle = getString(R.string.settings_privacy_subtitle),

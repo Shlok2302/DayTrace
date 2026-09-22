@@ -84,6 +84,8 @@ class DayTraceDialog(
     private var choices: List<Choice>? = null
     private var selected: Int? = null
     private var onPick: (Int) -> Unit = {}
+    private var content: View? = null
+    private var busy = false
 
     fun tone(tone: Tone) = apply { this.tone = tone }
 
@@ -160,6 +162,15 @@ class DayTraceDialog(
         this.onPick = onPick
     }
 
+    /** A view of the caller's own under the message, e.g. the details of an event. */
+    fun content(view: View) = apply { content = view }
+
+    /**
+     * "Working on it": a spinner instead of buttons, and it cannot be
+     * closed by the user. The caller dismisses the returned dialog.
+     */
+    fun busy() = apply { busy = true }
+
     fun show(): Dialog {
 
         val dialog =
@@ -180,16 +191,30 @@ class DayTraceDialog(
         view.findViewById<View>(R.id.callout).isVisible = !warning.isNullOrBlank()
         view.findViewById<TextView>(R.id.calloutText).text = warning
 
+        content?.let { custom ->
+            view.findViewById<android.widget.FrameLayout>(R.id.content).apply {
+                isVisible = true
+                addView(custom)
+            }
+        }
+
         bindChoices(view, dialog)
         bindButtons(view, dialog)
 
         view.findViewById<View>(R.id.btnClose).setOnClickListener { dialog.cancel() }
 
+        if (busy) {
+            view.findViewById<View>(R.id.progress).isVisible = true
+            view.findViewById<View>(R.id.buttons).isVisible = false
+            view.findViewById<View>(R.id.btnClose).isVisible = false
+            dialog.setCancelable(false)
+        }
+
         // The faint leaf stays inside the rounded card.
         view.findViewById<View>(R.id.card).clipToOutline = true
 
         dialog.setContentView(view)
-        dialog.setCanceledOnTouchOutside(true)
+        dialog.setCanceledOnTouchOutside(!busy)
 
         dialog.window?.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,

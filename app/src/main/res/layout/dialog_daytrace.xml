@@ -36,173 +36,200 @@
             android:contentDescription="@null"
             app:tint="@color/forest" />
 
-        <LinearLayout
+        <!-- Scrolls only when the content is taller than the screen -->
+        <ScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="30dp"
-            android:paddingBottom="22dp">
+            android:overScrollMode="ifContentScrolls"
+            android:scrollbars="none">
 
-            <!-- Illustration: a soft halo, a circle and the icon, with a little sparkle -->
-            <FrameLayout
-                android:layout_width="112dp"
-                android:layout_height="112dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingHorizontal="24dp"
+                android:paddingTop="30dp"
+                android:paddingBottom="22dp">
 
-                <View
-                    android:id="@+id/halo"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_oval" />
-
-                <ImageView
-                    android:id="@+id/sparks"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:alpha="0.55"
-                    android:src="@drawable/ic_dialog_sparks"
-                    android:importantForAccessibility="no"
-                    android:contentDescription="@null" />
-
+                <!-- Illustration: a soft halo, a circle and the icon, with a little sparkle -->
                 <FrameLayout
-                    android:id="@+id/iconCircle"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_oval"
-                    android:elevation="2dp">
+                    android:layout_width="112dp"
+                    android:layout_height="112dp">
+
+                    <View
+                        android:id="@+id/halo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_oval" />
 
                     <ImageView
-                        android:id="@+id/icon"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_gravity="center"
+                        android:id="@+id/sparks"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:alpha="0.55"
+                        android:src="@drawable/ic_dialog_sparks"
                         android:importantForAccessibility="no"
                         android:contentDescription="@null" />
 
+                    <FrameLayout
+                        android:id="@+id/iconCircle"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_oval"
+                        android:elevation="2dp">
+
+                        <ImageView
+                            android:id="@+id/icon"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_gravity="center"
+                            android:importantForAccessibility="no"
+                            android:contentDescription="@null" />
+
+                    </FrameLayout>
+
                 </FrameLayout>
 
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:gravity="center"
-                style="@style/Text.Title"
-                android:textSize="23sp" />
-
-            <TextView
-                android:id="@+id/message"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:gravity="center"
-                style="@style/Text.Body" />
-
-            <!-- A list to pick from (settings choices, export options) -->
-            <LinearLayout
-                android:id="@+id/choices"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:orientation="vertical"
-                android:visibility="gone" />
-
-            <!-- A gentle warning, for actions that cannot be undone -->
-            <LinearLayout
-                android:id="@+id/callout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_dialog_callout"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="14dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:src="@drawable/ic_warning"
-                    android:importantForAccessibility="no"
-                    android:contentDescription="@null"
-                    app:tint="@color/callout_text" />
-
                 <TextView
-                    android:id="@+id/calloutText"
-                    android:layout_width="0dp"
+                    android:id="@+id/title"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="12dp"
-                    android:textColor="@color/callout_text"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="2sp" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/buttons"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/btnSecondary"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
+                    android:layout_marginTop="18dp"
                     android:gravity="center"
-                    android:paddingHorizontal="12dp"
-                    android:background="@drawable/bg_button_outline"
-                    android:foreground="?attr/selectableItemBackground"
-                    android:textColor="@color/forest"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:clickable="true"
-                    android:focusable="true" />
+                    style="@style/Text.Title"
+                    android:textSize="23sp" />
 
                 <TextView
-                    android:id="@+id/btnPrimary"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="12dp"
+                    android:id="@+id/message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    style="@style/Text.Body" />
+
+                <!-- A view of the caller's own, e.g. the details of an event -->
+                <FrameLayout
+                    android:id="@+id/content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:visibility="gone" />
+
+                <!-- While something is being done (no buttons then) -->
+                <ProgressBar
+                    android:id="@+id/progress"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="22dp"
+                    android:layout_marginBottom="6dp"
+                    android:indeterminateTint="@color/forest"
+                    android:visibility="gone" />
+
+                <!-- A list to pick from (settings choices, export options) -->
+                <LinearLayout
+                    android:id="@+id/choices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+                <!-- A gentle warning, for actions that cannot be undone -->
+                <LinearLayout
+                    android:id="@+id/callout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_dialog_callout"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_warning"
+                        android:importantForAccessibility="no"
+                        android:contentDescription="@null"
+                        app:tint="@color/callout_text" />
+
+                    <TextView
+                        android:id="@+id/calloutText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:textColor="@color/callout_text"
+                        android:textSize="14sp"
+                        android:lineSpacingExtra="2sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/buttons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnSecondary"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp"
+                        android:background="@drawable/bg_button_outline"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:textColor="@color/forest"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/btnPrimary"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:drawablePadding="8dp"
+                        android:background="@drawable/bg_button_forest"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:textColor="@color/on_forest"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnExtra"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
                     android:gravity="center"
                     android:paddingHorizontal="16dp"
-                    android:drawablePadding="8dp"
-                    android:background="@drawable/bg_button_forest"
-                    android:foreground="?attr/selectableItemBackground"
-                    android:textColor="@color/on_forest"
-                    android:textSize="15sp"
+                    android:background="?attr/selectableItemBackground"
+                    android:textColor="@color/forest"
+                    android:textSize="14sp"
                     android:textStyle="bold"
-                    android:maxLines="1"
                     android:clickable="true"
-                    android:focusable="true" />
+                    android:focusable="true"
+                    android:visibility="gone" />
 
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/btnExtra"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:paddingHorizontal="16dp"
-                android:background="?attr/selectableItemBackground"
-                android:textColor="@color/forest"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:clickable="true"
-                android:focusable="true"
-                android:visibility="gone" />
-
-        </LinearLayout>
+        </ScrollView>
 
         <ImageButton
             android:id="@+id/btnClose"

@@ -70,6 +70,21 @@
 
         </receiver>
 
+        <!--
+            New notes were saved: if Google Calendar is connected, look for
+            events in them (only a suggestion; nothing is added by itself).
+            The broadcast is sent inside the app only.
+        -->
+        <receiver
+            android:name=".google.calendar.NewNotesReceiver"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="com.example.voicerecorder.SUMMARY_COMPLETE" />
+            </intent-filter>
+
+        </receiver>
+
         <!-- Starts the Gemini summary after RecordingService saves an MP3 -->
         <receiver
             android:name=".summary.RecordingCompleteReceiver"

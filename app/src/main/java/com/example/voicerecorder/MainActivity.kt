@@ -15,6 +15,8 @@ import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
+import com.example.voicerecorder.google.GoogleConsent
+import com.example.voicerecorder.google.GoogleIntegrationManager
 import com.example.voicerecorder.settings.AppSettings
 import com.example.voicerecorder.ui.HistoryFragment
 import com.example.voicerecorder.ui.NoteDetailFragment
@@ -28,9 +30,12 @@ import java.time.LocalDate
  * Holds the four tabs and the screens opened from them.
  * The recording itself still runs in RecordingService.
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), GoogleConsent.Host {
 
     private lateinit var bottomNav: BottomNavigationView
+
+    /** Google's account and consent screens, for any screen that connects Google. */
+    override val googleConsent = GoogleConsent(this)
 
     private var currentTab: Int = 0
 
@@ -61,6 +66,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         askForNotificationsOnce()
+
+        if (savedInstanceState == null) {
+            GoogleIntegrationManager.onAppOpened(this)
+        }
     }
 
     /**

@@ -15,6 +15,7 @@ import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.example.voicerecorder.R
+import com.example.voicerecorder.google.PendingCalendarAdd
 import com.example.voicerecorder.summary.GeminiSummarizer
 import com.example.voicerecorder.summary.Note
 import com.example.voicerecorder.summary.NoteActions
@@ -31,13 +32,15 @@ object NoteCards {
     /**
      * The compact row under the calendar: icon, title, preview, time.
      * [onChanged] is called after the note was deleted or marked as done.
+     * [onCalendar] adds "Add to Google Calendar" to a Remember note's menu.
      */
     fun historyCard(
         inflater: LayoutInflater,
         parent: ViewGroup,
         entry: NoteEntry,
         onOpen: (NoteEntry) -> Unit,
-        onChanged: () -> Unit = {}
+        onChanged: () -> Unit = {},
+        onCalendar: ((NoteEntry) -> Unit)? = null
     ): View {
 
         val view =
@@ -60,7 +63,7 @@ object NoteCards {
         view.setOnClickListener { onOpen(entry) }
 
         view.findViewById<ImageButton>(R.id.btnMore).setOnClickListener { anchor ->
-            showMenu(anchor, entry, onOpen, onChanged)
+            showMenu(anchor, entry, onOpen, onChanged, onCalendar)
         }
 
         return view
@@ -68,14 +71,17 @@ object NoteCards {
 
     /**
      * The full card on the day screen: category pill, time, title, text,
-     * tags, and the deadline of a Remember note.
+     * tags, the deadline of a Remember note, and its Google Calendar
+     * event ([calendar]: suggested, added or waiting).
      */
     fun dayCard(
         inflater: LayoutInflater,
         parent: ViewGroup,
         entry: NoteEntry,
         onOpen: (NoteEntry) -> Unit,
-        onChanged: () -> Unit = {}
+        onChanged: () -> Unit = {},
+        calendar: CalendarStates = CalendarStates.NONE,
+        onCalendar: ((NoteEntry) -> Unit)? = null
     ): View {
 
         val view =
@@ -85,13 +91,66 @@ object NoteCards {
             showStatus(view, R.drawable.ic_bell, dueText(view.context, entry.note))
         }
 
+        bindCalendarChip(view, entry, calendar, onCalendar)
+
         view.setOnClickListener { onOpen(entry) }
 
         view.findViewById<ImageButton>(R.id.btnMore).setOnClickListener { anchor ->
-            showMenu(anchor, entry, onOpen, onChanged)
+            showMenu(anchor, entry, onOpen, onChanged, onCalendar)
         }
 
         return view
+    }
+
+    /**
+     * "Add to Google Calendar · Tomorrow, 5:00 PM" for a note DayTrace
+     * thinks is an event; "In Google Calendar" once it was added; or that
+     * it is waiting. Tapping it opens the preview (nothing is added then).
+     */
+    private fun bindCalendarChip(
+        card: View,
+        entry: NoteEntry,
+        calendar: CalendarStates,
+        onCalendar: ((NoteEntry) -> Unit)?
+    ) {
+
+        val chip =
+            card.findViewById<View>(R.id.calendarChip)
+
+        val context =
+            card.context
+
+        val link =
+            calendar.links[entry.id]
+
+        val pending =
+            calendar.pending[entry.id]
+
+        val shown: Pair<Int, String>? =
+            when {
+                onCalendar == null || entry.note.isDeleted -> null
+                link != null -> R.drawable.ic_check to context.getString(R.string.calendar_chip_added, link.whenText)
+                pending?.state == PendingCalendarAdd.STATE_RECONNECT -> R.drawable.ic_warning to context.getString(R.string.calendar_chip_reconnect)
+                pending?.state == PendingCalendarAdd.STATE_FAILED -> R.drawable.ic_warning to context.getString(R.string.calendar_chip_failed)
+                pending != null -> R.drawable.ic_clock to context.getString(R.string.calendar_chip_waiting)
+                else -> calendar.suggestedDraft(entry)?.let { draft ->
+                    val whenText = CalendarText.short(context, draft)
+                    R.drawable.ic_calendar_add to
+                            if (whenText.isEmpty()) context.getString(R.string.calendar_chip_suggest_plain)
+                            else context.getString(R.string.calendar_chip_suggest, whenText)
+                }
+            }
+
+        chip.isVisible = shown != null
+
+        if (shown == null) {
+            return
+        }
+
+        card.findViewById<ImageView>(R.id.imgCalendarChip).setImageResource(shown.first)
+        card.findViewById<TextView>(R.id.tvCalendarChip).text = shown.second
+
+        chip.setOnClickListener { onCalendar?.invoke(entry) }
     }
 
     /**
@@ -256,7 +315,8 @@ object NoteCards {
         anchor: View,
         entry: NoteEntry,
         onOpen: (NoteEntry) -> Unit,
-        onChanged: () -> Unit
+        onChanged: () -> Unit,
+        onCalendar: ((NoteEntry) -> Unit)? = null
     ) {
 
         val context =
@@ -269,13 +329,15 @@ object NoteCards {
 
             if (entry.note.category == GeminiSummarizer.REMEMBER) {
                 menu.add(0, 3, 2, R.string.mark_done)
+                if (onCalendar != null) menu.add(0, 5, 3, R.string.calendar_add_to)
             }
 
-            menu.add(0, 4, 3, R.string.delete)
+            menu.add(0, 4, 4, R.string.delete)
 
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> onOpen(entry)
+                    5 -> onCalendar?.invoke(entry)
                     2 -> copy(context, entry.note.text)
                     3 -> run(anchor, R.string.marked_done, onChanged) {
                         NoteActions.moveToBin(it, entry.id, done = true)

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Google Calendar line on a note card: a soft green pill -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/forest_soft" />
+    <corners android:radius="16dp" />
+</shape>
